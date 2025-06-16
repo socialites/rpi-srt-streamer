@@ -11,26 +11,21 @@ YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-# Ensure config directory exists
 sudo mkdir -p "$(dirname "$CONFIG_FILE")"
 
-# Load config if it exists, otherwise prompt
 if [ -f "$CONFIG_FILE" ]; then
   echo "[INFO] Config file found at $CONFIG_FILE. Loading configuration..."
   source "$CONFIG_FILE"
 else
   echo "[WARN] Config not found at $CONFIG_FILE. Let's create it."
-
-  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST
+  read -rp "Enter your SRT destination host (e.g. desktop): " DEST_HOST
   read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT
   read -rp "Enter your Tailscale auth key (starts with tskey-): " TAILSCALE_AUTH_KEY
-
   sudo tee "$CONFIG_FILE" >/dev/null <<EOF
 DEST_HOST=${DEST_HOST}
 SRT_PORT=${SRT_PORT}
 TAILSCALE_AUTH_KEY=${TAILSCALE_AUTH_KEY}
 EOF
-
   echo "[INFO] Config file created at $CONFIG_FILE"
   source "$CONFIG_FILE"
 fi
@@ -40,7 +35,7 @@ echo "[INFO] Installing dependencies..."
 sudo apt-get update
 sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential
 
-### === Install or Reinstall usbreset === ###
+### === Install usbreset === ###
 echo "[INFO] (Re)installing usbreset..."
 cat << 'EOF' | sudo tee /tmp/usbreset.c >/dev/null
 #include <stdio.h>
@@ -71,7 +66,6 @@ int main(int argc, char **argv) {
   return 0;
 }
 EOF
-
 gcc /tmp/usbreset.c -o usbreset
 sudo mv usbreset "$USBRESET_PATH"
 sudo chown root:root "$USBRESET_PATH"
@@ -84,10 +78,8 @@ echo "[INFO] Installing Tailscale..."
 if ! command -v tailscale >/dev/null 2>&1; then
   curl -fsSL https://tailscale.com/install.sh | sh
 fi
-
 echo "[INFO] Logging into Tailscale..."
-sudo tailscale up --auth-key="${TAILSCALE_AUTH_KEY}" || \
-  echo "[INFO] Tailscale already active."
+sudo tailscale up --auth-key="${TAILSCALE_AUTH_KEY}" || echo "[INFO] Tailscale already active."
 
 ### === Detect Camlink === ###
 if [ ! -e "$VIDEO_DEVICE" ]; then
@@ -104,14 +96,28 @@ fi
 AUDIO_DEVICE="hw:${AUDIO_CARD},0"
 echo "[INFO] Using audio device: $AUDIO_DEVICE"
 
-### === Find Camlink USB path === ###
-BUS_DEV=$(lsusb | grep "$CAMLINK_ID" | awk '{print $2, $4}' | sed 's/://')
-USB_PATH=$(printf "/dev/bus/usb/%03d/%03d" ${BUS_DEV%% *} ${BUS_DEV##* })
-if [ -z "$USB_PATH" ]; then
-  echo "[ERROR] Could not find Camlink on USB bus."
+## === Reset USB Script === ###
+RESET_SCRIPT="/usr/local/bin/reset-camlink.sh"
+
+sudo tee "$RESET_SCRIPT" > /dev/null <<'EOF'
+#!/bin/bash
+echo "[INFO] Locating Camlink..."
+LINE=$(lsusb | grep "0fd9:0066")
+if [ -z "$LINE" ]; then
+  echo "[ERROR] Camlink not found in lsusb"
   exit 1
 fi
-echo "[INFO] Found Camlink USB path: $USB_PATH"
+
+BUS=$(echo "$LINE" | awk '{print $2}')
+DEV=$(echo "$LINE" | awk '{print $4}' | tr -d ':')
+
+USB_PATH=$(printf "/dev/bus/usb/%03d/%03d" "$((10#$BUS))" "$((10#$DEV))")
+echo "[INFO] Resetting Camlink at $USB_PATH"
+exec /usr/local/bin/usbreset "$USB_PATH"
+EOF
+
+sudo chmod +x "$RESET_SCRIPT"
+
 
 ### === Create systemd Service === ###
 echo "[INFO] Creating systemd service..."
@@ -121,7 +127,7 @@ Description=SRT HDMI Streamer with Audio
 After=network.target
 
 [Service]
-ExecStartPre=/bin/bash -c 'echo "[INFO] Resetting Camlink..."; ${USBRESET_PATH} ${USB_PATH} || (echo "[ERROR] usbreset failed" >> ${LOG_PATH}; exit 1)'
+ExecStartPre=/usr/local/bin/reset-camlink.sh
 ExecStart=/bin/bash -c '/usr/bin/ffmpeg \
   -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i ${VIDEO_DEVICE} \
   -f alsa -i ${AUDIO_DEVICE} \
