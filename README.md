@@ -57,6 +57,8 @@ Boot the Pi, then SSH in using the hostname or IP you set:
 ssh youruser@srt-streamer.local
 ```
 
+### NOTE: BEFORE YOU RUN THE NEXT STEP, MAKE SURE YOU ARE CONNECTED TO THE INTERNET ON THE PI. The script will fail if you are not connected to the internet. It needs to download and install dependencies.
+
 Then run:
 
 ```bash

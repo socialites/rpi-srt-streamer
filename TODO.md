@@ -6,4 +6,4 @@ Try USB Tethering.
 
 Web portal for each pi? or a center client for all pis
 
-Try magiclantern for camera
+Try magiclantern for camera to remove focus square and keep on indefinitely
