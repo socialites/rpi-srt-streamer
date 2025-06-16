@@ -102,7 +102,8 @@ AUDIO_DEVICE="hw:${AUDIO_CARD},0"
 echo "[INFO] Using audio device: $AUDIO_DEVICE"
 
 ### === Find Camlink USB path === ###
-USB_PATH=$(lsusb | grep "$CAMLINK_ID" | awk '{print $2, $4}' | sed 's/://g' | awk '{printf "/dev/bus/usb/%03d/%03d", $1, $2}')
+BUS_DEV=$(lsusb | grep "$CAMLINK_ID" | awk '{print $2, $4}' | sed 's/://')
+USB_PATH=$(printf "/dev/bus/usb/%03d/%03d" ${BUS_DEV%% *} ${BUS_DEV##* })
 if [ -z "$USB_PATH" ]; then
   echo "[ERROR] Could not find Camlink on USB bus."
   exit 1
@@ -117,7 +118,7 @@ Description=SRT HDMI Streamer with Audio
 After=network.target
 
 [Service]
-ExecStartPre=${USBRESET_PATH} ${USB_PATH}
+ExecStartPre=/bin/bash -c 'echo "[INFO] Resetting Camlink..."; ${USBRESET_PATH} ${USB_PATH} || (echo "[ERROR] usbreset failed" >> ${LOG_PATH}; exit 1)'
 ExecStart=/usr/bin/ffmpeg \\
   -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i ${VIDEO_DEVICE} \\
   -f alsa -i ${AUDIO_DEVICE} \\
