@@ -7,6 +7,9 @@ SERVICE_FILE="/etc/systemd/system/srt-streamer.service"
 VIDEO_DEVICE="/dev/video0"
 USBRESET_PATH="/usr/local/bin/usbreset"
 CAMLINK_ID="0fd9:0066"
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
 
 # Ensure config directory exists
 sudo mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -119,12 +122,13 @@ After=network.target
 
 [Service]
 ExecStartPre=/bin/bash -c 'echo "[INFO] Resetting Camlink..."; ${USBRESET_PATH} ${USB_PATH} || (echo "[ERROR] usbreset failed" >> ${LOG_PATH}; exit 1)'
-ExecStart=/usr/bin/ffmpeg \\
-  -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i ${VIDEO_DEVICE} \\
-  -f alsa -i ${AUDIO_DEVICE} \\
-  -c:v libx264 -preset ultrafast -tune zerolatency -vf "scale=1920:1080" -b:v 2500k \\
-  -c:a aac -b:a 128k -ar 44100 -ac 2 \\
-  -f mpegts "srt://${DEST_HOST}:${SRT_PORT}?pkt_size=1316&mode=caller"
+ExecStart=/bin/bash -c '/usr/bin/ffmpeg \
+  -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i ${VIDEO_DEVICE} \
+  -f alsa -i ${AUDIO_DEVICE} \
+  -c:v libx264 -preset ultrafast -tune zerolatency -vf "scale=1920:1080" -b:v 2500k \
+  -c:a aac -b:a 128k -ar 44100 -ac 2 \
+  -f mpegts "srt://${DEST_HOST}:${SRT_PORT}?pkt_size=1316&mode=caller" \
+  || (echo "[ERROR] ffmpeg exited with failure" >> ${LOG_PATH}; exit 1)'
 Restart=always
 StandardOutput=append:${LOG_PATH}
 StandardError=append:${LOG_PATH}
@@ -140,8 +144,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable srt-streamer.service
 sudo systemctl restart srt-streamer.service
 
-echo "[DONE] Setup complete. Edit $CONFIG_FILE to change any stream settings."
-echo "[INFO] The service file is located at: $SERVICE_FILE"
-echo "[INFO] The log file is located at: $LOG_PATH"
-echo "[INFO] You can now start/restart the service by running:"
-echo "sudo systemctl restart srt-streamer.service"
+echo -e "[${GREEN}DONE${NC}] Setup complete. Edit ${YELLOW}$CONFIG_FILE${NC} to change any stream settings."
+echo -e "[${GREEN}INFO${NC}] The service file is located at: ${YELLOW}$SERVICE_FILE${NC}"
+echo -e "[${GREEN}INFO${NC}] The log file is located at: ${YELLOW}$LOG_PATH${NC}"
+echo -e "[${GREEN}INFO${NC}] You can now restart the service by running:"
+echo -e "${GREEN}sudo systemctl restart srt-streamer.service${NC}"
