@@ -112,6 +112,11 @@ To check logs:
 cat /var/log/srt-streamer.log
 ```
 
+To stream the logs to check for errors:
+```bash
+tail -f /var/log/srt-streamer.log
+```
+
 To edit configuration later:
 
 ```bash

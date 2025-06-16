@@ -5,6 +5,11 @@ CONFIG_FILE="/opt/srt-streamer/config.env"
 LOG_PATH="/var/log/srt-streamer.log"
 SERVICE_FILE="/etc/systemd/system/srt-streamer.service"
 VIDEO_DEVICE="/dev/video0"
+USBRESET_PATH="/usr/local/bin/usbreset"
+CAMLINK_ID="0fd9:0066"
+
+# Ensure config directory exists
+sudo mkdir -p "$(dirname "$CONFIG_FILE")"
 
 # Load config if it exists, otherwise prompt
 if [ -f "$CONFIG_FILE" ]; then
@@ -27,11 +32,49 @@ EOF
   source "$CONFIG_FILE"
 fi
 
-
 ### === Install Dependencies === ###
 echo "[INFO] Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils
+sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential
+
+### === Install or Reinstall usbreset === ###
+echo "[INFO] (Re)installing usbreset..."
+cat << 'EOF' | sudo tee /tmp/usbreset.c >/dev/null
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <linux/usbdevice_fs.h>
+#include <sys/ioctl.h>
+
+int main(int argc, char **argv) {
+  if (argc != 2) {
+    printf("Usage: %s /dev/bus/usb/BBB/DDD\n", argv[0]);
+    return 1;
+  }
+  int fd = open(argv[1], O_WRONLY);
+  if (fd < 0) {
+    perror("Error opening device");
+    return 1;
+  }
+  printf("Resetting USB device %s\n", argv[1]);
+  int rc = ioctl(fd, USBDEVFS_RESET, 0);
+  if (rc < 0) {
+    perror("Error in ioctl");
+    return 1;
+  }
+  printf("Reset successful\n");
+  close(fd);
+  return 0;
+}
+EOF
+
+gcc /tmp/usbreset.c -o usbreset
+sudo mv usbreset "$USBRESET_PATH"
+sudo chown root:root "$USBRESET_PATH"
+sudo chmod u+s "$USBRESET_PATH"
+rm /tmp/usbreset.c
+echo "[INFO] usbreset installed to $USBRESET_PATH with setuid root"
 
 ### === Tailscale Setup === ###
 echo "[INFO] Installing Tailscale..."
@@ -58,15 +101,23 @@ fi
 AUDIO_DEVICE="hw:${AUDIO_CARD},0"
 echo "[INFO] Using audio device: $AUDIO_DEVICE"
 
-### === Create systemd Service if not exists === ###
-if [ ! -f "$SERVICE_FILE" ]; then
-  echo "[INFO] Creating systemd service..."
-  sudo tee "$SERVICE_FILE" >/dev/null <<EOF
+### === Find Camlink USB path === ###
+USB_PATH=$(lsusb | grep "$CAMLINK_ID" | awk '{print $2, $4}' | sed 's/://g' | awk '{printf "/dev/bus/usb/%03d/%03d", $1, $2}')
+if [ -z "$USB_PATH" ]; then
+  echo "[ERROR] Could not find Camlink on USB bus."
+  exit 1
+fi
+echo "[INFO] Found Camlink USB path: $USB_PATH"
+
+### === Create systemd Service === ###
+echo "[INFO] Creating systemd service..."
+sudo tee "$SERVICE_FILE" >/dev/null <<EOF
 [Unit]
 Description=SRT HDMI Streamer with Audio
 After=network.target
 
 [Service]
+ExecStartPre=${USBRESET_PATH} ${USB_PATH}
 ExecStart=/usr/bin/ffmpeg \\
   -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i ${VIDEO_DEVICE} \\
   -f alsa -i ${AUDIO_DEVICE} \\
@@ -80,7 +131,6 @@ StandardError=append:${LOG_PATH}
 [Install]
 WantedBy=multi-user.target
 EOF
-fi
 
 ### === Enable and Start the Service === ###
 echo "[INFO] Enabling and starting SRT streamer service..."
