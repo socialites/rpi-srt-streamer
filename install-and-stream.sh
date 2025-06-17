@@ -6,26 +6,32 @@ LOG_PATH="/var/log/srt-streamer.log"
 SERVICE_FILE="/etc/systemd/system/srt-streamer.service"
 VIDEO_DEVICE="/dev/video0"
 USBRESET_PATH="/usr/local/bin/usbreset"
+RESET_SCRIPT="/usr/local/bin/reset-camlink.sh"
 CAMLINK_ID="0fd9:0066"
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
+# Ensure config directory exists
 sudo mkdir -p "$(dirname "$CONFIG_FILE")"
 
+# Load config if it exists, otherwise prompt
 if [ -f "$CONFIG_FILE" ]; then
   echo "[INFO] Config file found at $CONFIG_FILE. Loading configuration..."
   source "$CONFIG_FILE"
 else
   echo "[WARN] Config not found at $CONFIG_FILE. Let's create it."
-  read -rp "Enter your SRT destination host (e.g. desktop): " DEST_HOST
+
+  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST
   read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT
   read -rp "Enter your Tailscale auth key (starts with tskey-): " TAILSCALE_AUTH_KEY
+
   sudo tee "$CONFIG_FILE" >/dev/null <<EOF
 DEST_HOST=${DEST_HOST}
 SRT_PORT=${SRT_PORT}
 TAILSCALE_AUTH_KEY=${TAILSCALE_AUTH_KEY}
 EOF
+
   echo "[INFO] Config file created at $CONFIG_FILE"
   source "$CONFIG_FILE"
 fi
@@ -33,9 +39,20 @@ fi
 ### === Install Dependencies === ###
 echo "[INFO] Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential
+sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse isc-dhcp-client jq usbutils net-tools
 
-### === Install usbreset === ###
+#### === Tailscale Setup === ###Add commentMore actions
+echo "[INFO] Installing Tailscale..."
+if ! command -v tailscale >/dev/null 2>&1; then
+  curl -fsSL https://tailscale.com/install.sh | sh
+fi
+
+echo "[INFO] Logging into Tailscale..."
+sudo tailscale up --auth-key="${TAILSCALE_AUTH_KEY}" || \
+  echo "[INFO] Tailscale already active."Add commentMore actions
+
+
+### === Install or Reinstall usbreset === ###
 echo "[INFO] (Re)installing usbreset..."
 cat << 'EOF' | sudo tee /tmp/usbreset.c >/dev/null
 #include <stdio.h>
@@ -66,6 +83,7 @@ int main(int argc, char **argv) {
   return 0;
 }
 EOF
+
 gcc /tmp/usbreset.c -o usbreset
 sudo mv usbreset "$USBRESET_PATH"
 sudo chown root:root "$USBRESET_PATH"
@@ -73,19 +91,89 @@ sudo chmod u+s "$USBRESET_PATH"
 rm /tmp/usbreset.c
 echo "[INFO] usbreset installed to $USBRESET_PATH with setuid root"
 
-### === Tailscale Setup === ###
-echo "[INFO] Installing Tailscale..."
-if ! command -v tailscale >/dev/null 2>&1; then
-  curl -fsSL https://tailscale.com/install.sh | sh
-fi
-echo "[INFO] Logging into Tailscale..."
-sudo tailscale up --auth-key="${TAILSCALE_AUTH_KEY}" || echo "[INFO] Tailscale already active."
-
-### === Detect Camlink === ###
-if [ ! -e "$VIDEO_DEVICE" ]; then
-  echo "[ERROR] Camlink not detected at $VIDEO_DEVICE"
+### === Create Reset Script === ###
+sudo tee "$RESET_SCRIPT" > /dev/null <<'EOF'
+#!/bin/bash
+echo "[INFO] Locating Camlink..."
+LINE=$(lsusb | grep "0fd9:0066")
+if [ -z "$LINE" ]; then
+  echo "[ERROR] Camlink not found in lsusb"
   exit 1
 fi
+BUS=$(echo "$LINE" | awk '{print $2}' | sed 's/^0*//')
+DEV=$(echo "$LINE" | awk '{print $4}' | tr -d ':' | sed 's/^0*//')
+USB_PATH=$(printf "/dev/bus/usb/%03d/%03d" "$BUS" "$DEV")
+echo "[INFO] Resetting Camlink at $USB_PATH"
+exec /usr/local/bin/usbreset "$USB_PATH"
+EOF
+
+sudo chmod +x "$RESET_SCRIPT"
+
+### === Create Network Watcher Script === ###
+NETWORK_WATCHER_SCRIPT="/usr/local/bin/network-watcher.sh"
+NETWORK_WATCHER_SERVICE="/etc/systemd/system/network-watcher.service"
+
+sudo tee "$NETWORK_WATCHER_SCRIPT" > /dev/null <<'EOF'
+#!/bin/bash
+
+LOG_FILE="/var/log/network-watcher.log"
+echo "[INFO] Starting network watcher..." >> "$LOG_FILE"
+
+# Interfaces in order of priority
+declare -a PRIORITY_IFACES=("enx" "usb0" "eth0" "wlan0")
+
+while true; do
+  for PREFIX in "${PRIORITY_IFACES[@]}"; do
+    # Match all interfaces with the prefix
+    for IFACE in $(ip -o link show | awk -F': ' "{print \$2}" | grep "^$PREFIX"); do
+      # Bring up the interface if it exists and is down
+      if ip link show "$IFACE" > /dev/null 2>&1; then
+        if ! ip link show "$IFACE" | grep -q "UP"; then
+          echo "[INFO] Bringing up interface $IFACE" >> "$LOG_FILE"
+          sudo ip link set "$IFACE" up
+          sudo dhclient "$IFACE" >> "$LOG_FILE" 2>&1
+        fi
+
+        # Check if the interface has an IP address
+        if ip addr show "$IFACE" | grep -q "inet "; then
+          CURRENT_ROUTE=$(ip route show default | awk '/default/ {print $5}' | head -n 1)
+          if [ "$CURRENT_ROUTE" != "$IFACE" ]; then
+            echo "[INFO] Switching default route to $IFACE" >> "$LOG_FILE"
+            sudo ip route replace default dev "$IFACE"
+            sleep 10  # Give time to settle
+          else
+            sleep 5
+          fi
+          break 2  # Exit both loops
+        fi
+      fi
+    done
+  done
+  sleep 5
+  echo "[INFO] No valid interfaces found. Retrying..." >> "$LOG_FILE"
+done
+EOF
+
+sudo chmod +x "$NETWORK_WATCHER_SCRIPT"
+
+### === Create and Enable Network Watcher Service === ###
+sudo tee "$NETWORK_WATCHER_SERVICE" > /dev/null <<EOF
+[Unit]
+Description=Network Priority Watcher
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$NETWORK_WATCHER_SCRIPT
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable network-watcher.service
+sudo systemctl start network-watcher.service
 
 ### === Detect Audio Device === ###
 AUDIO_CARD=$(arecord -l | grep -i "Cam Link" -A 1 | grep -oP 'card \K\d+')
@@ -96,56 +184,26 @@ fi
 AUDIO_DEVICE="hw:${AUDIO_CARD},0"
 echo "[INFO] Using audio device: $AUDIO_DEVICE"
 
-## === Reset USB Script === ###
-RESET_SCRIPT="/usr/local/bin/reset-camlink.sh"
-
-sudo tee "$RESET_SCRIPT" > /dev/null <<'EOF'
-#!/bin/bash
-echo "[INFO] Locating Camlink..."
-LINE=$(lsusb | grep "0fd9:0066")
-if [ -z "$LINE" ]; then
-  echo "[ERROR] Camlink not found in lsusb"
-  exit 1
-fi
-
-BUS=$(echo "$LINE" | awk '{print $2}')
-DEV=$(echo "$LINE" | awk '{print $4}' | tr -d ':')
-
-USB_PATH=$(printf "/dev/bus/usb/%03d/%03d" "$((10#$BUS))" "$((10#$DEV))")
-echo "[INFO] Resetting Camlink at $USB_PATH"
-exec /usr/local/bin/usbreset "$USB_PATH"
-EOF
-
-sudo chmod +x "$RESET_SCRIPT"
-
-
-### === Create systemd Service === ###
+### === Create systemd Service for Streamer === ###
 echo "[INFO] Creating systemd service..."
 sudo tee "$SERVICE_FILE" >/dev/null <<EOF
 [Unit]
 Description=SRT HDMI Streamer with Audio
-After=network.target
+After=network-watcher.service
 
 [Service]
-ExecStartPre=/usr/local/bin/reset-camlink.sh
-ExecStart=/bin/bash -c '/usr/bin/ffmpeg \
-  -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i ${VIDEO_DEVICE} \
-  -f alsa -i ${AUDIO_DEVICE} \
-  -c:v libx264 -preset ultrafast -tune zerolatency -vf "scale=1920:1080" -b:v 2500k \
-  -c:a aac -b:a 128k -ar 44100 -ac 2 \
-  -f mpegts "srt://${DEST_HOST}:${SRT_PORT}?pkt_size=1316&mode=caller" \
-  || (echo "[ERROR] ffmpeg exited with failure" >> ${LOG_PATH}; exit 1)'
+ExecStartPre=$RESET_SCRIPT
+ExecStart=/bin/bash -c '/usr/bin/ffmpeg   -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i $VIDEO_DEVICE   -f alsa -i $AUDIO_DEVICE   -c:v libx264 -preset ultrafast -tune zerolatency -vf "scale=1920:1080" -b:v 2500k   -c:a aac -b:a 128k -ar 44100 -ac 2   -f mpegts "srt://$DEST_HOST:$SRT_PORT?pkt_size=1316&mode=caller"   || (echo "[ERROR] ffmpeg exited with failure" >> $LOG_PATH; exit 1)'
 Restart=always
-StandardOutput=append:${LOG_PATH}
-StandardError=append:${LOG_PATH}
+StandardOutput=append:$LOG_PATH
+StandardError=append:$LOG_PATH
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-### === Enable and Start the Service === ###
+### === Enable and Start Streamer === ###
 echo "[INFO] Enabling and starting SRT streamer service..."
-sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 sudo systemctl enable srt-streamer.service
 sudo systemctl restart srt-streamer.service

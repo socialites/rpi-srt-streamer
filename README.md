@@ -46,6 +46,7 @@ Copy `install-and-stream.sh` to the **boot volume (/Volumes/system-boot)** of th
 * Always regenerates the systemd service for consistency
 * Creates a systemd service that:
   * Resets the Camlink USB device on service start
+  * Checks usb0, eth0, and wlan0 (in that order) for a valid connection and sets the default route to the first one found
   * Streams `/dev/video0` and HDMI/USB audio
   * Sends via SRT to the specified destination
 
