@@ -2,6 +2,12 @@
 
 This project turns a Raspberry Pi 5 into a **headless SRT streaming device** using a Camlink HDMI capture card and Tailscale to route the stream to your PC. This is very similar to what the LiveU Solo does, but with a Raspberry Pi and a Camlink.
 
+## Great For:
+
+- Mobile Streaming setup
+- Multi-camera setup at home (i.e., kitchen stream, bedroom stream, office stream, etc.)
+- Wirelessly streaming from a DSLR or any other HDMI source (e.g., a Nintendo Switch)
+
 ## 🧰 Requirements
 
 * **Raspberry Pi 5** (4GB RAM or better recommended)
