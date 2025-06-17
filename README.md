@@ -28,7 +28,7 @@ Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your Compute
 * Choose: `Other general purpose OS > Ubuntu Server 24.04 LTS (64-bit)`
 * Before writing, click ⚙️ to:
 
-  * Set hostname (srt-streamer)
+  * Set hostname (srt-streamer) NOTE: If setting up multiple pis, make sure to set a unique hostname for each one or append a number to the end of the hostname (e.g. srt-streamer-1, srt-streamer-2, etc.)
   * Enable SSH (yes)
   * Set username & password (yes)
   * Configure Wi-Fi if needed (yes)
