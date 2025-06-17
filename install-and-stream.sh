@@ -41,15 +41,13 @@ echo "[INFO] Installing dependencies..."
 sudo apt-get update
 sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse isc-dhcp-client jq usbutils net-tools
 
-#### === Tailscale Setup === ###Add commentMore actions
+#### === Tailscale Setup === ###
 echo "[INFO] Installing Tailscale..."
 if ! command -v tailscale >/dev/null 2>&1; then
   curl -fsSL https://tailscale.com/install.sh | sh
 fi
-
 echo "[INFO] Logging into Tailscale..."
-sudo tailscale up --auth-key="${TAILSCALE_AUTH_KEY}" || \
-  echo "[INFO] Tailscale already active."Add commentMore actions
+sudo tailscale up --auth-key="${TAILSCALE_AUTH_KEY}" || echo "[INFO] Tailscale already active."
 
 
 ### === Install or Reinstall usbreset === ###
