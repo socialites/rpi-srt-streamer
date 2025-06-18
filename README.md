@@ -2,6 +2,10 @@
 
 This project turns a Raspberry Pi 5 into a **headless SRT streaming device** using a Camlink HDMI capture card and Tailscale to route the stream to your PC. This is very similar to what the LiveU Solo does, but with a Raspberry Pi and a Camlink.
 
+The full setup is very similar to the [GUNRUN IRL Backpack](https://www.unlimitedirl.com/backpacks), but with a Raspberry Pi instead of the LiveU Solo PRO Bonding Encoder.
+
+Another comparable package is the [BELABOX](https://belabox.net/)
+
 ## Great For:
 
 - Mobile Streaming setup
@@ -145,5 +149,6 @@ sudo /boot/firmware/install-and-stream.sh
 * If you don't have wifi, you can use a USB modem to connect to the internet or use a USB tethering cable to connect to your phone's hotspot
 * This should also work if you're using USB Tethering for on-the-go internet.
 * When using USB Tethering, the USB Device must be on the USB2.0 port on the Pi while the Camlink must be on the USB3.0 port. If you put both on the USB3.0 port, the Pi will not be able to connect to the internet because of the power limitations.
+* To check if the Pi is connected to the internet, you can run `ping -s 8 -c 1 srt-streamer` from your phone. If you get a response, the Pi is connected to the internet.
 
 ## If you want steps similar to this for streaming from an iPhone or Android device, use this guide: [How to IRL Stream Using SRT](https://docs.google.com/document/d/1qCZKj1uLtIQqY1uPAj6MvxorYKMkjYO99lIei9hmMwg)
