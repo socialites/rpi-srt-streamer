@@ -300,6 +300,7 @@ fi
 
 echo "[INFO] Installing dashboard dependencies..."
 cd "$DASHBOARD_DIR"
+sudo chown -R "$USER":"$USER" "$DASHBOARD_DIR"
 pnpm install
 
 echo "[INFO] Building dashboard..."
