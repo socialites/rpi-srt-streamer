@@ -279,3 +279,55 @@ if [[ "$SETUP_WIFI" =~ ^[Yy]$ ]]; then
   sudo systemctl restart srt-streamer.service
 fi
 '''
+
+### === Install Health Check Server === ###
+echo "[INFO] Installing health check server..."
+
+# Create health server Python script
+sudo tee /usr/local/bin/health-server.py > /dev/null << 'EOF'
+#!/usr/bin/env python3
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"OK\n")
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, format, *args):
+        return  # Disable logging
+
+server = HTTPServer(("0.0.0.0", 80), HealthHandler)
+server.serve_forever()
+EOF
+
+sudo chmod +x /usr/local/bin/health-server.py
+
+# Create systemd service for health check
+sudo tee /etc/systemd/system/health-server.service > /dev/null <<EOF
+[Unit]
+Description=Lightweight HTTP Health Check Server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/health-server.py
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable health-server.service
+sudo systemctl start health-server.service
+
+HOSTNAME=$(hostname)
+echo "[INFO] Health check server started on port 80 (${YELLOW}http://${HOSTNAME}/health${NC})"
+echo -e "[INFO] You can now check if the Pi is connected to the internet by running: ${GREEN}ping -s 8 -c 1 ${HOSTNAME}${NC}"
+echo -e "[INFO] You can also check if the stream is live at: ${GREEN}http://${HOSTNAME}/health${NC}"
