@@ -144,5 +144,6 @@ sudo /boot/firmware/install-and-stream.sh
 * The systemd service is regenerated every time the script is run, so changes to config are always applied
 * If you don't have wifi, you can use a USB modem to connect to the internet or use a USB tethering cable to connect to your phone's hotspot
 * This should also work if you're using USB Tethering for on-the-go internet.
+* When using USB Tethering, the USB Device must be on the USB2.0 port on the Pi while the Camlink must be on the USB3.0 port. If you put both on the USB3.0 port, the Pi will not be able to connect to the internet because of the power limitations.
 
 ## If you want steps similar to this for streaming from an iPhone or Android device, use this guide: [How to IRL Stream Using SRT](https://docs.google.com/document/d/1qCZKj1uLtIQqY1uPAj6MvxorYKMkjYO99lIei9hmMwg)

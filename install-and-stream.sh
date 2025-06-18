@@ -39,7 +39,7 @@ fi
 ### === Install Dependencies === ###
 echo "[INFO] Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse isc-dhcp-client jq usbutils net-tools
+sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez
 
 #### === Tailscale Setup === ###
 echo "[INFO] Installing Tailscale..."
@@ -200,14 +200,82 @@ StandardError=append:$LOG_PATH
 WantedBy=multi-user.target
 EOF
 
-### === Enable and Start Streamer === ###
-echo "[INFO] Enabling and starting SRT streamer service..."
-sudo systemctl daemon-reload
-sudo systemctl enable srt-streamer.service
-sudo systemctl restart srt-streamer.service
+### === Enable higher USB current + OTG mode (Pi 4/5 only) === ###
+BOOT_CONFIG="/boot/firmware/config.txt"
+REBOOT_NEEDED=false
+
+# Detect Raspberry Pi Model
+PI_MODEL=$(tr -d '\0' < /proc/device-tree/model)
+
+if echo "$PI_MODEL" | grep -q -E "Raspberry Pi (4|5)"; then
+  echo "[INFO] Detected model: $PI_MODEL"
+
+  if ! grep -q "usb_max_current_enable=1" "$BOOT_CONFIG"; then
+    echo "[INFO] Enabling usb_max_current_enable=1 in $BOOT_CONFIG"
+    echo -e "\n# Enable higher USB current\nusb_max_current_enable=1" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+    REBOOT_NEEDED=true
+  fi
+
+  if ! grep -q "otg_mode=1" "$BOOT_CONFIG"; then
+    echo "[INFO] Enabling otg_mode=1 in $BOOT_CONFIG"
+    echo -e "\n# Enable OTG mode\notg_mode=1" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+    REBOOT_NEEDED=true
+  fi
+
+  if [ "$REBOOT_NEEDED" = true ]; then
+    echo -e "\033[1;33m[INFO] USB power and OTG settings updated. Rebooting in 5 seconds...\033[0m"
+    sleep 5
+    sudo reboot
+    exit 0
+  else
+    echo "[INFO] USB power and OTG settings already configured."
+  fi
+else
+  echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG config."
+fi
 
 echo -e "[${GREEN}DONE${NC}] Setup complete. Edit ${YELLOW}$CONFIG_FILE${NC} to change any stream settings."
 echo -e "[${GREEN}INFO${NC}] The service file is located at: ${YELLOW}$SERVICE_FILE${NC}"
 echo -e "[${GREEN}INFO${NC}] The log file is located at: ${YELLOW}$LOG_PATH${NC}"
 echo -e "[${GREEN}INFO${NC}] You can now restart the service by running:"
 echo -e "${GREEN}sudo systemctl restart srt-streamer.service${NC}"
+
+### === Enable and Start Streamer === ###
+echo "[INFO] Enabling and starting SRT streamer service..."
+sudo systemctl daemon-reload
+sudo systemctl enable srt-streamer.service
+sudo systemctl restart srt-streamer.service
+
+''' TODO: Add this back in later
+### === Configure Additional Wi-Fi === ###
+echo -e "\n[INFO] SRT stream started!"
+echo -e "Would you like to configure a new Wi-Fi network (e.g., mobile hotspot)? [Y/n]: \c"
+read -r SETUP_WIFI
+
+if [[ "$SETUP_WIFI" =~ ^[Yy]$ ]]; then
+  echo -e "\n[INFO] Installing tools..."
+  sudo apt-get install -y network-manager nmtui
+
+  echo -e "\n[INFO] Launching Wi-Fi setup. Use arrow keys and ENTER to navigate.\n"
+  sudo nmtui connect
+
+  echo -e "\n[INFO] Saved Wi-Fi connections:"
+  nmcli -t -f NAME,TYPE connection show | grep ':802-11-wireless' | cut -d':' -f1
+
+  echo -e "\nEnter the SSID you want to prioritize (e.g., your home network): \c"
+  read -r PREFERRED_WIFI
+
+  for SSID in $(nmcli -t -f NAME,TYPE connection show | grep ':802-11-wireless' | cut -d':' -f1); do
+    if [ "$SSID" == "$PREFERRED_WIFI" ]; then
+      sudo nmcli connection modify "$SSID" connection.autoconnect-priority 10
+      echo "[INFO] Set $SSID priority to 10"
+    else
+      sudo nmcli connection modify "$SSID" connection.autoconnect-priority 5
+      echo "[INFO] Set $SSID priority to 5"
+    fi
+  done
+
+  echo -e "\n[INFO] Wi-Fi config complete. Restarting streamer to validate connection..."
+  sudo systemctl restart srt-streamer.service
+fi
+'''
