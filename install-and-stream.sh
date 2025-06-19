@@ -52,7 +52,7 @@ fi
 ### === Install Dependencies === ###
 echo "[INFO] Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez
+sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez python3
 
 #### === Tailscale Setup === ###
 echo "[INFO] Installing Tailscale..."
@@ -292,3 +292,124 @@ if [[ "$SETUP_WIFI" =~ ^[Yy]$ ]]; then
   sudo systemctl restart srt-streamer.service
 fi
 '''
+
+### === Install Node.js, npm, and pnpm === ###
+echo "[INFO] Installing Node.js, npm, and pnpm..."
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+sudo npm install -g pnpm
+
+### === Clone and Build the Dashboard Repo === ###
+DASHBOARD_REPO="https://github.com/socialites/rpi-srt-streamer-dashboard"
+DASHBOARD_DIR="/boot/firmware/rpi-srt-streamer-dashboard"
+
+if [ ! -d "$DASHBOARD_DIR" ]; then
+  echo "[INFO] Cloning dashboard repo..."
+  sudo git clone "$DASHBOARD_REPO" "$DASHBOARD_DIR"
+else
+  echo "[INFO] Dashboard repo already exists. Pulling latest changes..."
+  cd "$DASHBOARD_DIR" && sudo git pull
+fi
+
+echo "[INFO] Installing dashboard dependencies..."
+cd "$DASHBOARD_DIR"
+sudo chown -R "$USER":"$USER" "$DASHBOARD_DIR"
+pnpm install
+
+echo "[INFO] Building dashboard..."
+pnpm build
+
+echo "[INFO] Generating dashboard server Python script..."
+sudo tee /usr/local/bin/srt-dashboard-server.py > /dev/null <<'EOF'
+#!/usr/bin/env python3
+import http.server
+import socketserver
+import os
+import json
+import subprocess
+import urllib.parse
+
+PORT = 80
+DASHBOARD_DIR = "/boot/firmware/rpi-srt-streamer-dashboard/dist"
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"ok")
+        elif self.path == "/api/status":
+            result = {
+                "hostname": subprocess.getoutput("hostname"),
+                "ip": subprocess.getoutput("hostname -I").strip(),
+                "network_watcher": subprocess.getoutput("systemctl is-active network-watcher.service"),
+                "srt_streamer": subprocess.getoutput("systemctl is-active srt-streamer.service")
+            }
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode())
+        elif self.path == "/manage" or self.path == "/manage/":
+            self.path = "/index.html"
+            return http.server.SimpleHTTPRequestHandler.do_GET(self)
+        else:
+            return http.server.SimpleHTTPRequestHandler.do_GET(self)
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        _ = self.rfile.read(length)
+        parsed_path = urllib.parse.urlparse(self.path)
+        path = parsed_path.path
+
+        if path.startswith("/api/restart/"):
+            service = path.split("/")[-1]
+            if service in ("network-watcher", "srt-streamer"):
+                subprocess.run(["sudo", "systemctl", "restart", f"{service}.service"])
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(f"Restarted {service}".encode())
+                return
+        elif path == "/api/shutdown":
+            subprocess.Popen(["sudo", "shutdown", "now"])
+        elif path == "/api/reboot":
+            subprocess.Popen(["sudo", "reboot"])
+        elif path == "/api/run-install":
+            subprocess.Popen(["sudo", "/boot/firmware/install-and-stream.sh"])
+
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+os.chdir(DASHBOARD_DIR)
+with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    print(f"Serving HTTP on port {PORT}...")
+    httpd.serve_forever()
+EOF
+
+sudo chmod +x /usr/local/bin/srt-dashboard-server.py
+
+echo "[INFO] Creating srt-dashboard-server.service..."
+sudo tee /etc/systemd/system/srt-dashboard-server.service > /dev/null <<EOF
+[Unit]
+Description=Raspberry Pi SRT Streamer Dashboard Server
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/srt-dashboard-server.py
+Restart=always
+User=$(whoami)
+WorkingDirectory=/boot/firmware/rpi-srt-streamer-dashboard/dist
+StandardOutput=append:/var/log/srt-dashboard-server.log
+StandardError=append:/var/log/srt-dashboard-server.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "[INFO] Enabling and starting srt-dashboard-server.service..."
+sudo systemctl daemon-reload
+sudo systemctl enable srt-dashboard-server.service
+sudo systemctl restart srt-dashboard-server.service
+
+echo "[INFO] Python web dashboard set up at http://$(hostname)/manage"
