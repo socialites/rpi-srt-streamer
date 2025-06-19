@@ -4,6 +4,7 @@ Field Rescue Terminal (Bluetooth)
 
 Maybe switch restarts to "start" and "stop"?
 
+After reboot or shutdown, call the refresh status? After the other reboots, call it too?
 
 ''' TODO: Add this back in later
 ### === Configure Additional Wi-Fi === ###
