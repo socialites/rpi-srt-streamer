@@ -36,6 +36,19 @@ EOF
   source "$CONFIG_FILE"
 fi
 
+### === Make current user passwordless sudo (if not already configured) === ###
+USERNAME="$(whoami)"
+SUDOERS_FILE="/etc/sudoers.d/${USERNAME}-nopasswd"
+
+if [ ! -f "$SUDOERS_FILE" ]; then
+  echo "[INFO] Adding $USERNAME to sudoers with NOPASSWD..."
+  echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" | sudo tee "$SUDOERS_FILE" > /dev/null
+  sudo chmod 440 "$SUDOERS_FILE"
+  echo "[SUCCESS] $USERNAME can now run sudo commands without a password."
+else
+  echo "[INFO] Sudoers file already exists for $USERNAME, skipping."
+fi
+
 ### === Install Dependencies === ###
 echo "[INFO] Installing dependencies..."
 sudo apt-get update
