@@ -326,12 +326,14 @@ After=network.target
 
 [Service]
 ExecStartPre=/bin/bash -c 'fuser -k 80/tcp || true'
+ExecStartPre=/bin/bash -c 'while ss -tulpn | grep -q ":80 "; do echo "[INFO] Waiting for port 80 to free up..."; sleep 1; done'
 ExecStart=/usr/bin/python3 /usr/local/bin/srt-dashboard-server.py
 Restart=always
 User=$(whoami)
 WorkingDirectory=/boot/firmware/rpi-srt-streamer-dashboard/dist
 StandardOutput=append:/var/log/srt-dashboard-server.log
 StandardError=append:/var/log/srt-dashboard-server.log
+RestartSec=2
 
 [Install]
 WantedBy=multi-user.target
