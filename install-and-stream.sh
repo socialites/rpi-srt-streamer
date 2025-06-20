@@ -256,10 +256,21 @@ PORT = 80
 DASHBOARD_DIR = "/boot/firmware/rpi-srt-streamer-dashboard/dist"
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    def _set_headers(self, content_type="text/plain"):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Content-type", content_type)
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self._set_headers()
+        self.end_headers()
+
     def do_GET(self):
         if self.path == "/health":
             self.send_response(200)
-            self.send_header("Content-type", "text/plain")
+            self._set_headers("text/plain")
             self.end_headers()
             self.wfile.write(b"ok")
         elif self.path == "/api/status":
@@ -270,10 +281,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "srt_streamer": subprocess.getoutput("systemctl is-active srt-streamer.service")
             }
             self.send_response(200)
-            self.send_header("Content-type", "application/json")
+            self._set_headers("application/json")
             self.end_headers()
             self.wfile.write(json.dumps(result).encode())
-        elif self.path == "/manage" or self.path == "/manage/" or self.path == "/":
+        elif self.path in ("/manage", "/manage/", "/"):
             self.path = "/index.html"
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
         else:
@@ -290,12 +301,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if service in ("network-watcher", "srt-streamer"):
                 subprocess.run(["sudo", "systemctl", "restart", f"{service}.service"])
                 self.send_response(200)
+                self._set_headers()
                 self.end_headers()
                 self.wfile.write(f"Restarted {service}".encode())
                 return
             elif service == "camlink":
                 subprocess.run(["sudo", "bash", "/usr/local/bin/reset-camlink.sh"])
                 self.send_response(200)
+                self._set_headers()
                 self.end_headers()
                 self.wfile.write(b"USB reset successful")
                 return
@@ -307,6 +320,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             subprocess.Popen(["sudo", "/boot/firmware/install-and-stream.sh"])
 
         self.send_response(200)
+        self._set_headers()
         self.end_headers()
         self.wfile.write(b"OK")
 
