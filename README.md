@@ -15,7 +15,9 @@ Another comparable package is the [BELABOX](https://belabox.net/)
 ## 🧰 Requirements
 
 * **Raspberry Pi 5** (4GB RAM or better recommended)
-* **64GB+ microSD card**
+* **100W USB-C Cable** (Because it likely will be 20W/5A which is the amperage we need to power the Pi + peripherals)
+* **Battery pack capable of outputting 5A**
+* **16GB+ microSD card**
 * **USB Camlink or HDMI capture device**
 * **HDMI source (e.g., camera or console)**
 * **Mobile data via USB tethering or USB modem**
@@ -139,6 +141,7 @@ sudo /boot/firmware/install-and-stream.sh
 
 ## 🧪 Notes
 
+* Why a Raspberry Pi 5? Because its currently the most powerful Raspberry Pi and it has 4GB of RAM which is more than enough for most streaming needs. It also has a pwoer button that can be used to easily turn the Pi on and off, and by default the USB ports can output 600mA but can be increased to 1.2A with the config script. All these benefits make it the best choice for this project.
 * If you’re using multiple Raspberry Pis, set each to a **unique SRT port** (e.g., `1234`, `1235`, etc.)
 * You can monitor or forward the SRT stream using OBS, FFmpeg, or GStreamer on your PC
 * `tailscale up` is run in unattended mode with your auth key
