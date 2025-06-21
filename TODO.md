@@ -1,6 +1,7 @@
 Try magiclantern for camera to remove focus square and keep on indefinitely
 
 Field Rescue Terminal (Bluetooth)
+Field Rescue Terminal USB SSH
 
 Maybe switch restarts to "start" and "stop"?
 
