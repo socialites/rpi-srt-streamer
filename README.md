@@ -16,7 +16,7 @@ Another comparable package is the [BELABOX](https://belabox.net/)
 
 * **Raspberry Pi 5** (4GB RAM or better recommended)
 * **100W USB-C Cable** (Because it likely will be 20W/5A which is the amperage we need to power the Pi + peripherals)
-* **Battery pack capable of outputting 5A**
+* **100W Battery pack capable of outputting 5A** (Because the Pi will be running on battery power if you're on the go and we need to make sure it has enough power to run)
 * **16GB+ microSD card**
 * **USB Camlink or HDMI capture device**
 * **HDMI source (e.g., camera or console)**
