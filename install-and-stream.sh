@@ -216,7 +216,8 @@ EOF
 ### === Install Node.js, npm, and pnpm === ###
 echo "[INFO] Installing Node.js, npm, and pnpm..."
 sudo curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
+sudo apt-get install -y nodejs python3-pip
+sudo pip3 install aiohttp --break-system-packages
 sudo npm install -g pnpm
 
 ### === Clone and Build the Dashboard Repo === ###
@@ -245,89 +246,112 @@ sudo cp -r "$TEMP_DASHBOARD_DIR/dist/"* "$FINAL_DASHBOARD_DIST"
 echo "[INFO] Generating dashboard server Python script..."
 sudo tee /usr/local/bin/srt-dashboard-server.py > /dev/null <<'EOF'
 #!/usr/bin/env python3
-import http.server
-import socketserver
-import os
+import asyncio
 import json
 import subprocess
-import urllib.parse
+import os
+from aiohttp import web
 
 PORT = 80
 DASHBOARD_DIR = "/boot/firmware/rpi-srt-streamer-dashboard/dist"
+WS_CLIENTS = set()
 
-class Handler(http.server.SimpleHTTPRequestHandler):
-    def _set_headers(self, content_type="text/plain"):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Content-type", content_type)
+# === HTTP ROUTES ===
 
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self._set_headers()
-        self.end_headers()
+async def health(request):
+    return web.Response(text="ok")
 
-    def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
-            self._set_headers("text/plain")
-            self.end_headers()
-            self.wfile.write(b"ok")
-        elif self.path == "/api/status":
-            result = {
-                "hostname": subprocess.getoutput("hostname"),
-                "ip": subprocess.getoutput("hostname -I").strip(),
-                "network_watcher": subprocess.getoutput("systemctl is-active network-watcher.service"),
-                "srt_streamer": subprocess.getoutput("systemctl is-active srt-streamer.service")
+async def status(request):
+    result = {
+        "hostname": subprocess.getoutput("hostname"),
+        "ip": subprocess.getoutput("hostname -I").strip(),
+        "network_watcher": subprocess.getoutput("systemctl is-active network-watcher.service"),
+        "srt_streamer": subprocess.getoutput("systemctl is-active srt-streamer.service")
+    }
+    return web.json_response(result)
+
+async def network_stats():
+    try:
+        result = subprocess.check_output(["ifstat", "-q", "-T", "1", "1"], text=True)
+        lines = [line.strip() for line in result.strip().splitlines()]
+        interfaces = lines[0].split()
+        values = lines[2].split()
+
+        parsed = {}
+        for i, iface in enumerate(interfaces):
+            parsed[iface] = {
+                "in_kbps": float(values[i * 2]),
+                "out_kbps": float(values[i * 2 + 1])
             }
-            self.send_response(200)
-            self._set_headers("application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(result).encode())
-        elif self.path in ("/manage", "/manage/", "/"):
-            self.path = "/index.html"
-            return http.server.SimpleHTTPRequestHandler.do_GET(self)
-        else:
-            return http.server.SimpleHTTPRequestHandler.do_GET(self)
 
-    def do_POST(self):
-        length = int(self.headers.get("Content-Length") or 0)
-        _ = self.rfile.read(length)
-        parsed_path = urllib.parse.urlparse(self.path)
-        path = parsed_path.path
+        relevant = ("enx", "eth0", "wlan0")
+        return {
+            k: v for k, v in parsed.items()
+            if any(k.startswith(prefix) for prefix in relevant)
+        }
 
-        if path.startswith("/api/restart/"):
-            service = path.split("/")[-1]
-            if service in ("network-watcher", "srt-streamer"):
-                subprocess.run(["sudo", "systemctl", "restart", f"{service}.service"])
-                self.send_response(200)
-                self._set_headers()
-                self.end_headers()
-                self.wfile.write(f"Restarted {service}".encode())
-                return
-            elif service == "camlink":
-                subprocess.run(["sudo", "bash", "/usr/local/bin/reset-camlink.sh"])
-                self.send_response(200)
-                self._set_headers()
-                self.end_headers()
-                self.wfile.write(b"USB reset successful")
-                return
-        elif path == "/api/shutdown":
-            subprocess.Popen(["sudo", "shutdown", "now"])
-        elif path == "/api/reboot":
-            subprocess.Popen(["sudo", "reboot"])
-        elif path == "/api/run-install":
-            subprocess.Popen(["sudo", "/boot/firmware/install-and-stream.sh"])
+    except Exception as e:
+        return {"error": str(e)}
 
-        self.send_response(200)
-        self._set_headers()
-        self.end_headers()
-        self.wfile.write(b"OK")
+async def network(request):
+    return web.json_response(await network_stats())
 
-os.chdir(DASHBOARD_DIR)
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
-    print(f"Serving HTTP on port {PORT}...")
-    httpd.serve_forever()
+async def handle_post(request):
+    path = request.path
+    if path.startswith("/api/restart/"):
+        service = path.split("/")[-1]
+        if service in ("network-watcher", "srt-streamer"):
+            subprocess.run(["sudo", "systemctl", "restart", f"{service}.service"])
+            return web.Response(text=f"Restarted {service}")
+        elif service == "camlink":
+            subprocess.run(["sudo", "bash", "/usr/local/bin/reset-camlink.sh"])
+            return web.Response(text="USB reset successful")
+    elif path == "/api/shutdown":
+        subprocess.Popen(["sudo", "shutdown", "now"])
+    elif path == "/api/reboot":
+        subprocess.Popen(["sudo", "reboot"])
+    elif path == "/api/run-install":
+        subprocess.Popen(["sudo", "/boot/firmware/install-and-stream.sh"])
+    return web.Response(text="OK")
+
+# === WEBSOCKET SUPPORT ===
+
+async def websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    WS_CLIENTS.add(ws)
+
+    try:
+        while not ws.closed:
+            await asyncio.sleep(2)
+            stats = await network_stats()
+            await ws.send_str(json.dumps(stats))
+    except:
+        pass
+    finally:
+        WS_CLIENTS.remove(ws)
+    return ws
+
+# === APP SETUP ===
+async def serve_index(request):
+    return web.FileResponse(os.path.join(DASHBOARD_DIR, "index.html"))
+
+app = web.Application()
+app.add_routes([
+    web.get('/', serve_index),
+    web.get('/health', health),
+    web.get('/api/status', status),
+    web.get('/api/network', network),
+    web.get('/api/network/ws', websocket_handler),
+    web.post('/api/restart/{service}', handle_post),
+    web.post('/api/shutdown', handle_post),
+    web.post('/api/reboot', handle_post),
+    web.post('/api/run-install', handle_post),
+    web.static('/', DASHBOARD_DIR),
+])
+
+if __name__ == '__main__':
+    web.run_app(app, port=PORT)
 EOF
 
 sudo chmod +x /usr/local/bin/srt-dashboard-server.py

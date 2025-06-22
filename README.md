@@ -155,3 +155,18 @@ sudo /boot/firmware/install-and-stream.sh
 * To check if the Pi is connected to the internet, you can run `ping -s 8 -c 1 srt-streamer` from your phone. If you get a response, the Pi is connected to the internet.
 
 ## If you want steps similar to this for streaming from an iPhone or Android device, use this guide: [How to IRL Stream Using SRT](https://docs.google.com/document/d/1qCZKj1uLtIQqY1uPAj6MvxorYKMkjYO99lIei9hmMwg)
+
+## Useful Commands
+```bash
+watch -n 1 'echo -n "srt-streamer: "; systemctl is-active srt-streamer; echo -n "network-watcher: "; systemctl is-active network-watcher'
+```
+Output will look like:
+```bash
+srt-streamer: active
+network-watcher: active
+```
+
+```bash
+watch -n 2 'systemctl status srt-streamer --no-pager -n 5; echo "----------------------"; systemctl status network-watcher --no-pager -n 5'
+```
+Shows last 5 log lines for each every 2 seconds
