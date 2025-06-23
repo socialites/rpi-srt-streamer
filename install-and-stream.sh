@@ -52,7 +52,32 @@ fi
 ### === Install Dependencies === ###
 echo "[INFO] Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils build-essential iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez python3
+sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils \
+  iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse \
+  isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez \
+  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms
+
+### === Clone and Build v4l2loopback === ###
+echo "[INFO] Cloning and building v4l2loopback..."
+if [ ! -d "/usr/src/v4l2loopback" ]; then
+  git clone https://github.com/umlaeute/v4l2loopback.git /tmp/v4l2loopback
+  cd /tmp/v4l2loopback
+  make
+  sudo make install
+else
+  echo "[INFO] v4l2loopback already exists, skipping clone."
+fi
+
+### === Configure v4l2loopback to Load on Boot === ###
+echo "[INFO] Writing v4l2loopback config..."
+sudo tee /etc/modules-load.d/v4l2loopback.conf > /dev/null <<EOF
+v4l2loopback
+EOF
+
+sudo tee /etc/modprobe.d/v4l2loopback.conf > /dev/null <<EOF
+options v4l2loopback devices=1 video_nr=1 card_label="Preview" exclusive_caps=1
+EOF
+
 
 #### === Tailscale Setup === ###
 echo "[INFO] Installing Tailscale..."
@@ -186,37 +211,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable network-watcher.service
 sudo systemctl start network-watcher.service
 
-### === Detect Audio Device === ###
-AUDIO_CARD=$(arecord -l | grep -i "Cam Link" -A 1 | grep -oP 'card \K\d+')
-if [ -z "$AUDIO_CARD" ]; then
-  echo "[ERROR] Could not auto-detect Camlink audio device."
-  exit 1
-fi
-AUDIO_DEVICE="hw:${AUDIO_CARD},0"
-echo "[INFO] Using audio device: $AUDIO_DEVICE"
-
-### === Create systemd Service for Streamer === ###
-echo "[INFO] Creating systemd service..."
-sudo tee "$SERVICE_FILE" >/dev/null <<EOF
-[Unit]
-Description=SRT HDMI Streamer with Audio
-After=network-watcher.service
-
-[Service]
-ExecStartPre=$RESET_SCRIPT
-ExecStart=/bin/bash -c '/usr/bin/ffmpeg   -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i $VIDEO_DEVICE   -f alsa -i $AUDIO_DEVICE   -c:v libx264 -preset ultrafast -tune zerolatency -vf "scale=1920:1080" -b:v 2500k   -c:a aac -b:a 128k -ar 44100 -ac 2   -f mpegts "srt://$DEST_HOST:$SRT_PORT?pkt_size=1316&mode=caller"   || (echo "[ERROR] ffmpeg exited with failure" >> $LOG_PATH; exit 1)'
-Restart=always
-StandardOutput=append:$LOG_PATH
-StandardError=append:$LOG_PATH
-
-[Install]
-WantedBy=multi-user.target
-EOF
 
 ### === Install Node.js, npm, and pnpm === ###
 echo "[INFO] Installing Node.js, npm, and pnpm..."
 sudo curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs python3-pip
+sudo apt-get install -y nodejs
 sudo pip3 install aiohttp --break-system-packages
 sudo npm install -g pnpm
 
@@ -342,7 +341,6 @@ async def connect_wifi(request):
     except subprocess.CalledProcessError as e:
         return web.Response(status=500, text=str(e))
 
-
 # === WEBSOCKET SUPPORT ===
 
 async def websocket_handler(request):
@@ -381,6 +379,11 @@ app.add_routes([
     web.static('/', DASHBOARD_DIR),
 ])
 
+HLS_DIR = "/boot/firmware/hls"
+os.makedirs(HLS_DIR, exist_ok=True)
+app.router.add_static('/hls/', HLS_DIR, show_index=True)
+
+
 if __name__ == '__main__':
     web.run_app(app, port=PORT)
 EOF
@@ -412,6 +415,47 @@ echo "[INFO] Enabling and starting srt-dashboard-server.service..."
 sudo systemctl daemon-reload
 sudo systemctl enable srt-dashboard-server.service
 sudo systemctl restart srt-dashboard-server.service
+
+### === Detect Audio Device === ###
+AUDIO_CARD=$(arecord -l | grep -i "Cam Link" -A 1 | grep -oP 'card \K\d+')
+if [ -z "$AUDIO_CARD" ]; then
+  echo "[ERROR] Could not auto-detect Camlink audio device."
+  exit 1
+fi
+AUDIO_DEVICE="hw:${AUDIO_CARD},0"
+echo "[INFO] Using audio device: $AUDIO_DEVICE"
+
+### === Create systemd Service for SRT Streamer (Tee Pipeline) === ###
+echo "[INFO] Creating systemd service..."
+sudo tee "$SERVICE_FILE" >/dev/null <<EOF
+[Unit]
+Description=SRT HDMI Streamer with Audio and Preview (single process)
+After=network-watcher.service
+Requires=network-watcher.service
+
+[Service]
+ExecStartPre=$RESET_SCRIPT
+ExecStart=/bin/bash -c '/usr/bin/ffmpeg \
+  -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i /dev/video0 \
+  -f alsa -i $AUDIO_DEVICE \
+  -filter_complex "[0:v]split=2[main][preview];[preview]scale=640:360,format=yuv420p[previewout]" \
+  -map "[previewout]" -c:v libx264 -preset ultrafast -tune zerolatency -b:v 500k \
+  -f hls -hls_time 2 -hls_list_size 3 -hls_flags delete_segments /boot/firmware/hls/preview.m3u8 \
+  -map "[main]" -map 1:a -c:v libx264 -preset ultrafast -tune zerolatency -b:v 2500k \
+  -f mpegts "srt://$DEST_HOST:$SRT_PORT?pkt_size=1316&mode=caller" \
+  || (echo "[ERROR] ffmpeg exited with failure" >> $LOG_PATH; exit 1)'
+Restart=always
+StandardOutput=append:$LOG_PATH
+StandardError=append:$LOG_PATH
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+### === Load v4l2loopback Now === ###
+echo "[INFO] Loading v4l2loopback module..."
+sudo modprobe v4l2loopback devices=1 video_nr=1 card_label="Preview" exclusive_caps=1
+
 
 echo "[INFO] Python web dashboard set up at http://$(hostname)/manage"
 
