@@ -43,7 +43,7 @@ Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your Compute
   * Set hostname (srt-streamer) NOTE: If setting up multiple pis, make sure to set a unique hostname for each one or append a number to the end of the hostname (e.g. srt-streamer-1, srt-streamer-2, etc.)
   * Enable SSH (yes)
   * Set username & password (yes)
-  * Configure Wi-Fi if needed (yes)
+  * Configure Wi-Fi (yes if you want to SSH in to configure the Pi. You wont need this if you're connecting the Pi to a monitor and have a separate keyboard and mouse to use.)
 
 After flashing is complete, remove and re-insert the SD card into your Computer so the boot volume is mounted.
 

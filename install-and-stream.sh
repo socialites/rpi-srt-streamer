@@ -314,6 +314,35 @@ async def handle_post(request):
         subprocess.Popen(["sudo", "/boot/firmware/install-and-stream.sh"])
     return web.Response(text="OK")
 
+async def scan_networks(request):
+    try:
+        result = subprocess.check_output(["nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"], text=True)
+        networks = []
+        for line in result.strip().splitlines():
+            parts = line.strip().split(":")
+            if len(parts) >= 2:
+                ssid, signal = parts[0], parts[1]
+                security = parts[2] if len(parts) > 2 else "UNKNOWN"
+                if ssid:  # skip empty SSIDs
+                    networks.append({"ssid": ssid, "signal": signal, "security": security})
+        return web.json_response(networks)
+    except subprocess.CalledProcessError as e:
+        return web.Response(status=500, text=str(e))
+
+async def connect_wifi(request):
+    data = await request.json()
+    ssid = data.get("ssid")
+    password = data.get("password")
+    if not ssid or not password:
+        return web.Response(status=400, text="Missing SSID or password")
+
+    try:
+        subprocess.check_call(["nmcli", "device", "wifi", "connect", ssid, "password", password])
+        return web.Response(status=200, text=f"Connected to {ssid}")
+    except subprocess.CalledProcessError as e:
+        return web.Response(status=500, text=str(e))
+
+
 # === WEBSOCKET SUPPORT ===
 
 async def websocket_handler(request):
@@ -343,6 +372,8 @@ app.add_routes([
     web.get('/api/status', status),
     web.get('/api/network', network),
     web.get('/api/network/ws', websocket_handler),
+    web.get('/api/wifi/networks', scan_networks),
+    web.post('/api/wifi/connect', connect_wifi),
     web.post('/api/restart/{service}', handle_post),
     web.post('/api/shutdown', handle_post),
     web.post('/api/reboot', handle_post),
