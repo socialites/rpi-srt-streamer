@@ -12,6 +12,10 @@ Another comparable package is the [BELABOX](https://belabox.net/)
 - Multi-camera setup at home (i.e., kitchen stream, bedroom stream, office stream, etc.)
 - Wirelessly streaming from a DSLR or any other HDMI source (e.g., a Nintendo Switch)
 
+
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+
 ## 🧰 Requirements
 
 * **Raspberry Pi 5** (4GB RAM or better recommended)
@@ -40,42 +44,31 @@ Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your Compute
 * Choose: `Other general purpose OS > Ubuntu Server 24.04 LTS (64-bit)`
 * Before writing, click ⚙️ to:
 
-  * Set hostname (srt-streamer) NOTE: If setting up multiple pis, make sure to set a unique hostname for each one or append a number to the end of the hostname (e.g. srt-streamer-1, srt-streamer-2, etc.)
+  * Set hostname (your-pi-hostname) NOTE: If setting up multiple pis, make sure to set a unique hostname for each one or append a number to the end of the hostname (e.g. your-pi-hostname-1, your-pi-hostname-2, etc.)
   * Enable SSH (yes)
   * Set username & password (yes)
   * Configure Wi-Fi (yes if you want to SSH in to configure the Pi. You wont need this if you're connecting the Pi to a monitor and have a separate keyboard and mouse to use.)
 
-After flashing is complete, remove and re-insert the SD card into your Computer so the boot volume is mounted.
+After flashing is complete, remove the card from the computer and insert it into the Pi.
 
-### 2. Add Install Script to `/Volumes/system-boot`
+### 2. Connect the Pi to your network
 
-Copy `install-and-stream.sh` to the **boot volume (/Volumes/system-boot)** of the SD card. This script:
-
-* Installs dependencies
-* Connects to Tailscale using your auth key
-* Detects Camlink audio automatically
-* Prompts for configuration input
-* Always regenerates the systemd service for consistency
-* Creates a systemd service that:
-  * Resets the Camlink USB device on service start
-  * Checks usb0, eth0, and wlan0 (in that order) for a valid connection and sets the default route to the first one found
-  * Streams `/dev/video0` and HDMI/USB audio
-  * Sends via SRT to the specified destination
+Connect the Pi to your network using the Ethernet cable or Wi-Fi.
 
 ### 3. SSH In and Run the Script
 
 Boot the Pi, then SSH in using the hostname or IP you set:
 
 ```bash
-ssh youruser@srt-streamer.local
+ssh youruser@your-pi-hostname.local
 ```
 
 ### NOTE: BEFORE YOU RUN THE NEXT STEP, MAKE SURE YOU ARE CONNECTED TO THE INTERNET ON THE PI. The script will fail if you are not connected to the internet. It needs to download and install dependencies.
 
-Then run:
+Run the following command to run the install script:
 
 ```bash
-sudo /boot/firmware/install-and-stream.sh
+curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | bash
 ```
 
 You’ll be prompted to enter:
@@ -86,8 +79,26 @@ You’ll be prompted to enter:
 
 This creates `/opt/streamer/config.env`, which can be edited later.
 
+This script:
+* Installs dependencies
+* Connects to Tailscale using your auth key
+* Detects Camlink audio automatically
+* Prompts for configuration input
+* Always regenerates the systemd service for consistency
+* Creates a systemd service that:
+  * Resets the Camlink USB device on service start
+  * Checks usb0, eth0, and wlan0 (in that order) for a valid connection and sets the default route to the first one found
+  * Streams `/dev/video0` and HDMI/USB audio
+  * Sends via SRT to the specified destination
+* The Pi will reboot after the script is run to apply the changes
+* The Pi will start streaming automatically on boot.
+* You can access the Pi's web interface at `http://your-pi-hostname/` to view the dashboard.
 
-### 4. Editing the `.env` Configuration (Optional)
+### You're now ready to stream! 🎉
+
+## Everything below this point is optional.
+
+### 4. (Optional) Editing the `.env` Configuration
 
 If you need to, you can edit the environment file to change the SRT destination host, port, and Tailscale auth key:
 
@@ -103,15 +114,19 @@ SRT_PORT="1234"
 TAILSCALE_AUTH_KEY="tskey-auth-..."
 ```
 
-### 4.1. Now, rerun the install-and-stream.sh script
+### 4.1. (Optional) Now, rerun the `install-and-stream.sh` script
+You can also rerun the script from the dashboard: `http://your-pi-hostname/` "Restart Install and Stream" button.
+
+
+Alternatively, you can run the script manually:
+```bash
+sudo /boot/firmware/install-and-stream.sh
+```
 
 This is so the script can read the configuration to regenerate the service file if changes were made to the configuration and start the streamer service
 
-Then start/restart the streamer service:
 
-```bash
-sudo systemctl restart srt-streamer.service
-```
+# Technical Details
 
 ## 🔁 Restart or Debug
 
@@ -141,20 +156,21 @@ sudo /boot/firmware/install-and-stream.sh
 
 ## 🧪 Notes
 
-* Why a Raspberry Pi 5? Because its currently the most powerful Raspberry Pi and it has 4GB of RAM which is more than enough for most streaming needs. It also has a pwoer button that can be used to easily turn the Pi on and off, and by default the USB ports can output 600mA but can be increased to 1.2A with the config script. All these benefits make it the best choice for this project.
+* Why a Raspberry Pi 5? Because its currently the most powerful Raspberry Pi and it has 4GB of RAM which is more than enough for most streaming needs. It also has a power button that can be used to easily turn the Pi on and off, and by default the USB ports can output 600mA but can be increased to 1.2A with the config script. All these benefits make it the best choice for this project.
 * If you’re using multiple Raspberry Pis, set each to a **unique SRT port** (e.g., `1234`, `1235`, etc.)
-* You can monitor or forward the SRT stream using OBS, FFmpeg, or GStreamer on your PC
 * `tailscale up` is run in unattended mode with your auth key
 * The `.env` file at `/opt/srt-streamer/config.env` controls stream settings and can be safely edited anytime
-* Camlink audio is auto-detected on startup; if the stream fails, try unplugging/replugging Camlink and restarting the service
+* Camlink audio is auto-detected on startup
+* If the stream fails, try unplugging/replugging Camlink and restarting the service
 * `usbreset` is compiled and used on service start to reset the Camlink device automatically, preventing the need for manual replugging
-* The systemd service is regenerated every time the script is run, so changes to config are always applied
+* The `systemd` service is regenerated every time the script is run, so changes to config are always applied
 * If you don't have wifi, you can use a USB modem to connect to the internet or use a USB tethering cable to connect to your phone's hotspot
 * This should also work if you're using USB Tethering for on-the-go internet.
 * When using USB Tethering, the USB Device must be on the USB2.0 port on the Pi while the Camlink must be on the USB3.0 port. If you put both on the USB3.0 port, the Pi will not be able to connect to the internet because of the power limitations.
 * To check if the Pi is connected to the internet, you can run `ping -s 8 -c 1 srt-streamer` from your phone. If you get a response, the Pi is connected to the internet.
+* If you plug a 4G/5G/LTE Modem or USB Wifi Dongle into the Pi, you can use it to connect to the internet. It will be `wlan1`
 
-## If you want steps similar to this for streaming from an iPhone or Android device, use this guide: [How to IRL Stream Using SRT](https://docs.google.com/document/d/1qCZKj1uLtIQqY1uPAj6MvxorYKMkjYO99lIei9hmMwg)
+## If you want steps similar to this for streaming from an iPhone or Android device, use this guide: [How to IRL Stream to your PC from Anywhere](https://docs.google.com/document/d/1qCZKj1uLtIQqY1uPAj6MvxorYKMkjYO99lIei9hmMwg)
 
 ## Useful Commands
 ```bash
