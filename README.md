@@ -1,4 +1,4 @@
-# 📡 Raspberry Pi SRT Streamer
+# 📡 Raspberry Pi SRT Streamer {ignore=true}
 
 This project turns a Raspberry Pi 5 into a **headless SRT streaming device** using a Camlink HDMI capture card and Tailscale to route the stream to your PC. This is very similar to what the LiveU Solo does, but with a Raspberry Pi and a Camlink.
 
@@ -6,14 +6,28 @@ The full setup is very similar to the [GUNRUN IRL Backpack](https://www.unlimite
 
 Another comparable package is the [BELABOX](https://belabox.net/)
 
-## Great For:
+## Great For: {ignore=true}
 
 - Mobile Streaming setup
 - Multi-camera setup at home (i.e., kitchen stream, bedroom stream, office stream, etc.)
 - Wirelessly streaming from a DSLR or any other HDMI source (e.g., a Nintendo Switch)
 
-
+## Table of Contents {ignore=true}
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+  - [🧰 Requirements](#-requirements)
+  - [⚙️ Features](#️-features)
+  - [🔧 Setup Overview](#-setup-overview)
+    - [4. (Optional) Editing the `.env` Configuration](#4-optional-editing-the-env-configuration)
+- [Technical Details](#technical-details)
+  - [🧪 Notes](#-notes)
+  - [If you want steps similar to this for streaming from an iPhone or Android device, use this guide: How to IRL Stream to your PC from Anywhere](#if-you-want-steps-similar-to-this-for-streaming-from-an-iphone-or-android-device-use-this-guide-how-to-irl-stream-to-your-pc-from-anywherehttpsdocsgooglecomdocumentd1qczkj1ultiqqy1upaj6mvxorykmkjyo99liei9hmmwg)
+  - [Useful Commands](#useful-commands)
+
+<!-- /code_chunk_output -->
+
 
 
 ## 🧰 Requirements
@@ -37,25 +51,26 @@ Another comparable package is the [BELABOX](https://belabox.net/)
 
 ## 🔧 Setup Overview
 
-### 1. Flash Ubuntu Server
+### 1. Flash Ubuntu Server {ignore=true}
 
 Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your Computer:
 
 * Choose: `Other general purpose OS > Ubuntu Server 24.04 LTS (64-bit)`
 * Before writing, click ⚙️ to:
 
-  * Set hostname (your-pi-hostname) NOTE: If setting up multiple pis, make sure to set a unique hostname for each one or append a number to the end of the hostname (e.g. your-pi-hostname-1, your-pi-hostname-2, etc.)
+  * Set hostname (`your-pi-hostname`)
+    * **NOTE: If setting up multiple pis, make sure to set a unique hostname for each one or append a number to the end of the hostname (e.g. `your-pi-hostname-1`, `your-pi-hostname-2`, etc.)**
   * Enable SSH (yes)
   * Set username & password (yes)
-  * Configure Wi-Fi (yes if you want to SSH in to configure the Pi. You wont need this if you're connecting the Pi to a monitor and have a separate keyboard and mouse to use.)
+  * Configure Wi-Fi **(yes if you want to SSH in to configure the Pi. You wont need this if you're connecting the Pi to a monitor and have a separate keyboard and mouse to use.)**
 
 After flashing is complete, remove the card from the computer and insert it into the Pi.
 
-### 2. Connect the Pi to your network
+### 2. Connect the Pi to your network {ignore=true}
 
 Connect the Pi to your network using the Ethernet cable or Wi-Fi.
 
-### 3. SSH In and Run the Script
+### 3. SSH In and Run the Script {ignore=true}
 
 Boot the Pi, then SSH in using the hostname or IP you set:
 
@@ -63,7 +78,7 @@ Boot the Pi, then SSH in using the hostname or IP you set:
 ssh youruser@your-pi-hostname.local
 ```
 
-### NOTE: BEFORE YOU RUN THE NEXT STEP, MAKE SURE YOU ARE CONNECTED TO THE INTERNET ON THE PI. The script will fail if you are not connected to the internet. It needs to download and install dependencies.
+### NOTE: BEFORE YOU RUN THE NEXT STEP, MAKE SURE YOU ARE CONNECTED TO THE INTERNET ON THE PI. The script will fail if you are not connected to the internet. It needs to download and install dependencies. {ignore=true}
 
 Run the following command to run the install script:
 
@@ -94,9 +109,9 @@ This script:
 * The Pi will start streaming automatically on boot.
 * You can access the Pi's web interface at `http://your-pi-hostname/` to view the dashboard.
 
-### You're now ready to stream! 🎉
+### You're now ready to stream! 🎉 {ignore=true}
 
-## Everything below this point is optional.
+## Everything below this point is optional. {ignore=true}
 
 ### 4. (Optional) Editing the `.env` Configuration
 
@@ -114,11 +129,11 @@ SRT_PORT="1234"
 TAILSCALE_AUTH_KEY="tskey-auth-..."
 ```
 
-### 4.1. (Optional) Now, rerun the `install-and-stream.sh` script
+### 4.1. Now, rerun the `install-and-stream.sh` script {ignore=true}
 You can also rerun the script from the dashboard: `http://your-pi-hostname/` "Restart Install and Stream" button.
 
 
-Alternatively, you can run the script manually:
+Alternatively, since you're already in the SSH session, you can run the script manually:
 ```bash
 sudo /boot/firmware/install-and-stream.sh
 ```
@@ -128,7 +143,7 @@ This is so the script can read the configuration to regenerate the service file 
 
 # Technical Details
 
-## 🔁 Restart or Debug
+## 🔁 Restart or Debug {ignore=true}
 
 To restart the stream:
 
