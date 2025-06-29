@@ -68,7 +68,9 @@ After flashing is complete, remove the card from the computer and insert it into
 
 ### 2. Connect the Pi to your network {ignore=true}
 
-Connect the Pi to your network using the Ethernet cable or Wi-Fi.
+If you configured your Wifi settings in the Raspberry Pi Imager, you can skip this step.
+
+Otherwise, connect the Pi to your network using the Ethernet cable.
 
 ### 3. SSH In and Run the Script {ignore=true}
 
@@ -83,7 +85,7 @@ ssh youruser@your-pi-hostname.local
 Run the following command to run the install script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | sudo bash
 ```
 
 You’ll be prompted to enter:
