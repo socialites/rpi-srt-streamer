@@ -23,9 +23,9 @@ if [ -f "$CONFIG_FILE" ]; then
 else
   echo "[WARN] Config not found at $CONFIG_FILE. Let's create it."
 
-  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST
-  read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT
-  read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY
+  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST < /dev/tty
+  read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT < /dev/tty
+  read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY < /dev/tty
 
   sudo tee "$CONFIG_FILE" >/dev/null <<EOF
 DEST_HOST=${DEST_HOST}
