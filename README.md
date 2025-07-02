@@ -1,4 +1,4 @@
-# 📡 Raspberry Pi SRT Streamer {ignore=true}
+# 📡 Raspberry Pi SRT Streamer <!--- {ignore=true} -->
 
 This project turns a Raspberry Pi 5 into a **headless SRT streaming device** using a Camlink HDMI capture card and Tailscale to route the stream to your PC. This is very similar to what the LiveU Solo does, but with a Raspberry Pi and a Camlink.
 
@@ -6,13 +6,13 @@ The full setup is very similar to the [GUNRUN IRL Backpack](https://www.unlimite
 
 Another comparable package is the [BELABOX](https://belabox.net/)
 
-## Great For: {ignore=true}
+## Great For: <!--- {ignore=true} -->
 
 - Mobile Streaming setup
 - Multi-camera setup at home (i.e., kitchen stream, bedroom stream, office stream, etc.)
 - Wirelessly streaming from a DSLR or any other HDMI source (e.g., a Nintendo Switch)
 
-## Table of Contents {ignore=true}
+## Table of Contents <!--- {ignore=true} -->
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
@@ -51,7 +51,7 @@ Another comparable package is the [BELABOX](https://belabox.net/)
 
 ## 🔧 Setup Overview
 
-### 1. Flash Ubuntu Server <!-- {ignore=true} -->
+### 1. Flash Ubuntu Server <!--- {ignore=true} -->
 
 Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your Computer:
 
@@ -66,13 +66,13 @@ Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your Compute
 
 After flashing is complete, remove the card from the computer and insert it into the Pi.
 
-### 2. Connect the Pi to your network <!-- {ignore=true} -->
+### 2. Connect the Pi to your network <!--- {ignore=true} -->
 
 If you configured your Wifi settings in the Raspberry Pi Imager, you can skip this step.
 
 Otherwise, connect the Pi to your network using the Ethernet cable.
 
-### 3. SSH In and Run the Script <!-- {ignore=true} -->
+### 3. SSH In and Run the Script <!--- {ignore=true} -->
 
 Boot the Pi, then SSH in using the hostname or IP you set:
 
@@ -80,7 +80,7 @@ Boot the Pi, then SSH in using the hostname or IP you set:
 ssh youruser@your-pi-hostname.local
 ```
 
-### NOTE: BEFORE YOU RUN THE NEXT STEP, MAKE SURE YOU ARE CONNECTED TO THE INTERNET ON THE PI. The script will fail if you are not connected to the internet. It needs to download and install dependencies. <!-- {ignore=true} -->
+### NOTE: BEFORE YOU RUN THE NEXT STEP, MAKE SURE YOU ARE CONNECTED TO THE INTERNET ON THE PI. The script will fail if you are not connected to the internet. It needs to download and install dependencies. <!--- {ignore=true} -->
 
 Run the following command to run the install script:
 
@@ -111,9 +111,12 @@ This script:
 * The Pi will start streaming automatically on boot.
 * You can access the Pi's web interface at `http://your-pi-hostname/` to view the dashboard.
 
-### You're now ready to stream! 🎉 <!-- {ignore=true} -->
+> [!TIP]
+> I would recommend [disabling Key Expiry in Tailscale](https://tailscale.com/kb/1028/key-expiry#disabling-key-expiry). This will allow you to use the same auth key for a longer period of time and you wont have to SSH in re-authenticate every 90 or 180 days when the key expires. You can do this from the Tailscale dashboard.
 
-## Everything below this point is optional. <!-- {ignore=true} -->
+### You're now ready to stream! 🎉 <!--- {ignore=true} -->
+
+## Everything below this point is optional. <!--- {ignore=true} -->
 
 ### 4. (Optional) Editing the `.env` Configuration
 
@@ -131,7 +134,7 @@ SRT_PORT="1234"
 TAILSCALE_AUTH_KEY="tskey-auth-..."
 ```
 
-### 4.1. Now, rerun the `install-and-stream.sh` script <!-- {ignore=true} -->
+### 4.1. Now, rerun the `install-and-stream.sh` script <!--- {ignore=true} -->
 You can also rerun the script from the dashboard: `http://your-pi-hostname/` "Restart Install and Stream" button.
 
 
@@ -145,7 +148,7 @@ This is so the script can read the configuration to regenerate the service file 
 
 # Technical Details
 
-## 🔁 Restart or Debug <!-- {ignore=true} -->
+## 🔁 Restart or Debug <!--- {ignore=true} -->
 
 To restart the stream:
 
