@@ -256,15 +256,6 @@ PORT = 80
 DASHBOARD_DIR = "/boot/firmware/rpi-srt-streamer-dashboard/dist"
 WS_CLIENTS = set()
 
-# Configure CORS
-cors = aiohttp_cors.setup(app, defaults={
-    "*": aiohttp_cors.ResourceOptions(
-        allow_credentials=True,
-        expose_headers="*",
-        allow_headers="*",
-    )
-})
-
 # === HTTP ROUTES ===
 
 async def health(request):
@@ -374,6 +365,15 @@ async def serve_index(request):
     return web.FileResponse(os.path.join(DASHBOARD_DIR, "index.html"))
 
 app = web.Application()
+
+# Configure CORS
+cors = aiohttp_cors.setup(app, defaults={
+    "*": aiohttp_cors.ResourceOptions(
+        allow_credentials=True,
+        expose_headers="*",
+        allow_headers="*",
+    )
+})
 
 routes = [
     web.get('/', serve_index),
