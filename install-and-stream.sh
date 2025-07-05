@@ -216,7 +216,7 @@ sudo systemctl start network-watcher.service
 echo "[INFO] Installing Node.js, npm, and pnpm..."
 sudo curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
-sudo pip3 install aiohttp --break-system-packages
+sudo pip3 install aiohttp aiohttp_cors --break-system-packages
 sudo npm install -g pnpm
 
 ### === Clone and Build the Dashboard Repo === ###
@@ -254,6 +254,15 @@ from aiohttp import web
 PORT = 80
 DASHBOARD_DIR = "/boot/firmware/rpi-srt-streamer-dashboard/dist"
 WS_CLIENTS = set()
+
+# Configure CORS
+cors = aiohttp_cors.setup(app, defaults={
+    "*": aiohttp_cors.ResourceOptions(
+        allow_credentials=True,
+        expose_headers="*",
+        allow_headers="*",
+    )
+})
 
 # === HTTP ROUTES ===
 
@@ -364,7 +373,8 @@ async def serve_index(request):
     return web.FileResponse(os.path.join(DASHBOARD_DIR, "index.html"))
 
 app = web.Application()
-app.add_routes([
+
+routes = [
     web.get('/', serve_index),
     web.get('/health', health),
     web.get('/api/status', status),
@@ -377,7 +387,10 @@ app.add_routes([
     web.post('/api/reboot', handle_post),
     web.post('/api/run-install', handle_post),
     web.static('/', DASHBOARD_DIR),
-])
+]
+
+for route in routes:
+    cors.add(app.router.add_route(route.method, route.path, route.handler))
 
 HLS_DIR = "/boot/firmware/hls"
 os.makedirs(HLS_DIR, exist_ok=True)
