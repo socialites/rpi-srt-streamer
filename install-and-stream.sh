@@ -383,6 +383,14 @@ HLS_DIR = "/boot/firmware/hls"
 os.makedirs(HLS_DIR, exist_ok=True)
 app.router.add_static('/hls/', HLS_DIR, show_index=True)
 
+# === Graceful Shutdown Hook ===
+async def on_shutdown(app):
+    print("[INFO] Shutting down... closing WebSocket clients.")
+    for ws in list(WS_CLIENTS):
+        await ws.close(code=1001, message="Server restarting")
+    print("[INFO] WebSocket clients closed.")
+
+app.on_shutdown.append(on_shutdown)
 
 if __name__ == '__main__':
     web.run_app(app, port=PORT)
@@ -406,6 +414,8 @@ WorkingDirectory=/boot/firmware/rpi-srt-streamer-dashboard/dist
 StandardOutput=append:/var/log/srt-dashboard-server.log
 StandardError=append:/var/log/srt-dashboard-server.log
 RestartSec=2
+KillMode=mixed
+TimeoutStopSec=5
 
 [Install]
 WantedBy=multi-user.target
