@@ -249,6 +249,7 @@ import asyncio
 import json
 import subprocess
 import os
+import aiohttp_cors
 from aiohttp import web
 
 PORT = 80
