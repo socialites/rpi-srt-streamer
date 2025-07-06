@@ -387,11 +387,14 @@ routes = [
     web.post('/api/shutdown', handle_post),
     web.post('/api/reboot', handle_post),
     web.post('/api/run-install', handle_post),
-    web.static('/', DASHBOARD_DIR),
 ]
 
+# Add normal routes
 for route in routes:
     cors.add(app.router.add_route(route.method, route.path, route.handler))
+
+# Add static route separately
+app.router.add_static('/', DASHBOARD_DIR)
 
 HLS_DIR = "/boot/firmware/hls"
 os.makedirs(HLS_DIR, exist_ok=True)
