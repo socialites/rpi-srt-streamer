@@ -253,6 +253,7 @@ sudo tee /usr/local/bin/srt-dashboard-server.py > /dev/null <<'EOF'
 import asyncio
 import json
 import subprocess
+import socket
 import os
 import aiohttp_cors
 from aiohttp import web
@@ -261,17 +262,51 @@ PORT = 80
 DASHBOARD_DIR = "/boot/firmware/rpi-srt-streamer-dashboard/dist"
 WS_CLIENTS = set()
 
+def get_ap_status_and_ssid():
+    ap_status = "down"
+    ssid = "unavailable"
+    password = "not available"
+
+    try:
+        # Check if ap0 exists and is UP
+        output = subprocess.check_output(["ip", "link", "show", "ap0"]).decode()
+        if "UP" in output:
+            # Get SSID and password from config
+            try:
+                with open("/etc/hostapd-ap0.conf", "r") as f:
+                    for line in f:
+                        if line.startswith("ssid="):
+                            ssid = line.strip().split("=")[1]
+                        elif line.startswith("wpa_passphrase="):
+                            password = line.strip().split("=")[1]
+                if ssid != "unavailable":
+                    ap_status = "up"
+                else:
+                    ap_status = "down"
+            except Exception:
+                ap_status = "down"
+    except subprocess.CalledProcessError:
+        ap_status = "missing"
+
+    return ap_status, ssid, password
+
+
 # === HTTP ROUTES ===
 
 async def health(request):
     return web.Response(text="ok")
 
 async def status(request):
+    ap_status, ssid, password = get_ap_status_and_ssid()
+
     result = {
         "hostname": subprocess.getoutput("hostname"),
         "ip": subprocess.getoutput("hostname -I").strip(),
         "network_watcher": subprocess.getoutput("systemctl is-active network-watcher.service"),
-        "srt_streamer": subprocess.getoutput("systemctl is-active srt-streamer.service")
+        "srt_streamer": subprocess.getoutput("systemctl is-active srt-streamer.service"),
+        "ap_ssid": ssid,
+        "ap_status": ap_status,
+        "ap_password": password
     }
     return web.json_response(result)
 
@@ -300,6 +335,9 @@ async def network_stats():
 
 async def network(request):
     return web.json_response(await network_stats())
+
+
+
 
 async def handle_post(request):
     path = request.path
@@ -525,6 +563,8 @@ wpa=2
 wpa_passphrase=$PASSWORD
 wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
+ctrl_interface=/var/run/hostapd
+ctrl_interface_group=0
 EOF
 
 # Write dnsmasq config
