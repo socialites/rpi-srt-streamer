@@ -495,47 +495,6 @@ sudo modprobe v4l2loopback devices=1 video_nr=1 card_label="Preview" exclusive_c
 
 echo "[INFO] Python web dashboard set up at http://$(hostname)/manage"
 
-
-### === Enable higher USB current + OTG mode (Pi 4/5 only) === ###
-BOOT_CONFIG="/boot/firmware/config.txt"
-REBOOT_NEEDED=false
-
-# Detect Raspberry Pi Model
-PI_MODEL=$(tr -d '\0' < /proc/device-tree/model)
-
-if echo "$PI_MODEL" | grep -q -E "Raspberry Pi (4|5)"; then
-  echo "[INFO] Detected model: $PI_MODEL"
-
-  if ! grep -q "usb_max_current_enable=1" "$BOOT_CONFIG"; then
-    echo "[INFO] Enabling usb_max_current_enable=1 in $BOOT_CONFIG"
-    echo -e "\n# Enable higher USB current\nusb_max_current_enable=1" | sudo tee -a "$BOOT_CONFIG" > /dev/null
-    REBOOT_NEEDED=true
-  fi
-
-  if ! grep -q "otg_mode=1" "$BOOT_CONFIG"; then
-    echo "[INFO] Enabling otg_mode=1 in $BOOT_CONFIG"
-    echo -e "\n# Enable OTG mode\notg_mode=1" | sudo tee -a "$BOOT_CONFIG" > /dev/null
-    REBOOT_NEEDED=true
-  fi
-
-  if [ "$REBOOT_NEEDED" = true ]; then
-    echo -e "\033[1;33m[INFO] USB power and OTG settings updated. Rebooting in 5 seconds...\033[0m"
-    sleep 5
-    sudo reboot
-    exit 0
-  else
-    echo "[INFO] USB power and OTG settings already configured."
-  fi
-else
-  echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG config."
-fi
-
-### === Enable and Start Streamer === ###
-echo "[INFO] Enabling and starting SRT streamer service..."
-sudo systemctl daemon-reload
-sudo systemctl enable srt-streamer.service
-sudo systemctl restart srt-streamer.service
-
 ### === Setup Emergency Wi-Fi Access Point (always-on) === ###
 echo "[INFO] Marking ap0 as unmanaged by NetworkManager..."
 sudo mkdir -p /etc/NetworkManager/conf.d
@@ -660,6 +619,46 @@ sudo systemctl start ap0-dnsmasq
 sudo systemctl enable ap0-watchdog.timer
 sudo systemctl start ap0-watchdog.timer
 
+
+### === Enable higher USB current + OTG mode (Pi 4/5 only) === ###
+BOOT_CONFIG="/boot/firmware/config.txt"
+REBOOT_NEEDED=false
+
+# Detect Raspberry Pi Model
+PI_MODEL=$(tr -d '\0' < /proc/device-tree/model)
+
+if echo "$PI_MODEL" | grep -q -E "Raspberry Pi (4|5)"; then
+  echo "[INFO] Detected model: $PI_MODEL"
+
+  if ! grep -q "usb_max_current_enable=1" "$BOOT_CONFIG"; then
+    echo "[INFO] Enabling usb_max_current_enable=1 in $BOOT_CONFIG"
+    echo -e "\n# Enable higher USB current\nusb_max_current_enable=1" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+    REBOOT_NEEDED=true
+  fi
+
+  if ! grep -q "otg_mode=1" "$BOOT_CONFIG"; then
+    echo "[INFO] Enabling otg_mode=1 in $BOOT_CONFIG"
+    echo -e "\n# Enable OTG mode\notg_mode=1" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+    REBOOT_NEEDED=true
+  fi
+
+  if [ "$REBOOT_NEEDED" = true ]; then
+    echo -e "\033[1;33m[INFO] USB power and OTG settings updated. Rebooting in 5 seconds...\033[0m"
+    sleep 5
+    sudo reboot
+    exit 0
+  else
+    echo "[INFO] USB power and OTG settings already configured."
+  fi
+else
+  echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG config."
+fi
+
+### === Enable and Start Streamer === ###
+echo "[INFO] Enabling and starting SRT streamer service..."
+sudo systemctl daemon-reload
+sudo systemctl enable srt-streamer.service
+sudo systemctl restart srt-streamer.service
 
 
 echo -e "[${GREEN}DONE${NC}] Setup complete. Edit ${YELLOW}$CONFIG_FILE${NC} to change any stream settings."
