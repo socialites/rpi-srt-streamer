@@ -110,6 +110,7 @@ This script:
 * The Pi will reboot after the script is run to apply the changes
 * The Pi will start streaming automatically on boot.
 * You can access the Pi's web interface at `http://your-pi-hostname/` to view the dashboard.
+* The Pi will create a fallback Wi-Fi Access Point (AP) with the SSID and password you provided. This is useful if you're on the go and don't have a network connection but need to connect to the Pi to manage anything.
 
 > [!TIP]
 > I would recommend [disabling Key Expiry in Tailscale](https://tailscale.com/kb/1028/key-expiry#disabling-key-expiry). This will allow you to use the same auth key for a longer period of time and you wont have to SSH in re-authenticate every 90 or 180 days when the key expires. You can do this from the Tailscale dashboard.
@@ -132,6 +133,8 @@ Update the values to match your setup:
 DEST_HOST="your-desktop-hostname"
 SRT_PORT="1234"
 TAILSCALE_AUTH_KEY="tskey-auth-..."
+SSID="SRTStreamer"
+PASSWORD="mypassword"
 ```
 
 ### 4.1. Now, rerun the `install-and-stream.sh` script <!--- {ignore=true} -->

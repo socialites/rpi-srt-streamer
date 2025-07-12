@@ -26,7 +26,7 @@ else
   read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT
   read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY
   read -rp "Enter your devices desired SSID (e.g. 'SRTStreamer'): " SSID
-  read -rp "Enter your devices desired password (e.g. 'mypassword' **Must be at least 7 characters**): " PASSWORD
+  read -rp "Enter your devices desired password (e.g. 'mypassword' **Must be at least 8 characters**): " PASSWORD
 
   sudo tee "$CONFIG_FILE" >/dev/null <<EOF
 DEST_HOST=${DEST_HOST}
@@ -645,7 +645,7 @@ if echo "$PI_MODEL" | grep -q -E "Raspberry Pi (4|5)"; then
   if [ "$REBOOT_NEEDED" = true ]; then
     echo -e "[${YELLOW}INFO${NC}] USB power and OTG settings updated. Rebooting in 5 seconds..."
     echo -e "[${GREEN}INFO${NC}] When the system comes back up, ssh in and run:"
-    echo -e "${GREEN}curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install-and-stream.sh | sudo bash${NC}"
+    echo -e "${GREEN}sudo /boot/firmware/install-and-stream.sh${NC}"
     echo -e "[${GREEN}INFO${NC}] This will re-run the install script and apply the changes."
     sleep 5
     sudo reboot
