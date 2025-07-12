@@ -22,7 +22,7 @@ else
   read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT < /dev/tty
   read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY < /dev/tty
   read -rp "Enter your devices desired SSID (e.g. 'SRTStreamer'): " SSID < /dev/tty
-  read -rp "Enter your devices desired password (e.g. 'mypassword'): " PASSWORD < /dev/tty
+  read -rp "Enter your devices desired password (e.g. 'mypassword' **Must be at least 7 characters**): " PASSWORD < /dev/tty
 
   sudo tee "$CONFIG_FILE" >/dev/null <<EOF
 DEST_HOST=${DEST_HOST}

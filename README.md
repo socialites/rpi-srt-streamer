@@ -206,3 +206,7 @@ network-watcher: active
 watch -n 2 'systemctl status srt-streamer --no-pager -n 5; echo "----------------------"; systemctl status network-watcher --no-pager -n 5'
 ```
 Shows last 5 log lines for each every 2 seconds
+
+```bash
+journalctl -u ap0-hostapd --no-pager
+```
