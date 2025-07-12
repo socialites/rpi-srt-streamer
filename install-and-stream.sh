@@ -25,11 +25,15 @@ else
   read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST
   read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT
   read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY
+  read -rp "Enter your devices desired SSID (e.g. 'MyPiCam'): " SSID
+  read -rp "Enter your devices desired password (e.g. 'password'): " PASSWORD
 
   sudo tee "$CONFIG_FILE" >/dev/null <<EOF
 DEST_HOST=${DEST_HOST}
 SRT_PORT=${SRT_PORT}
 TAILSCALE_AUTH_KEY=${TAILSCALE_AUTH_KEY}
+SSID=${SSID}
+PASSWORD=${PASSWORD}
 EOF
 
   echo "[INFO] Config file created at $CONFIG_FILE"
@@ -55,7 +59,8 @@ sudo apt-get update
 sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils \
   iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse \
   isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez \
-  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat
+  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat \
+  iw hostapd dnsmasq
 
 ### === Clone and Build v4l2loopback === ###
 echo "[INFO] Cloning and building v4l2loopback..."
@@ -306,6 +311,10 @@ async def handle_post(request):
         elif service == "camlink":
             subprocess.run(["sudo", "bash", "/usr/local/bin/reset-camlink.sh"])
             return web.Response(text="USB reset successful")
+        elif service == "ap":
+            subprocess.run(["sudo", "systemctl", "restart", "ap0-hostapd"])
+            subprocess.run(["sudo", "systemctl", "restart", "ap0-dnsmasq"])
+            return web.Response(text="Restarted access point")
     elif path == "/api/shutdown":
         subprocess.Popen(["sudo", "shutdown", "now"])
     elif path == "/api/reboot":
@@ -527,8 +536,137 @@ sudo systemctl daemon-reload
 sudo systemctl enable srt-streamer.service
 sudo systemctl restart srt-streamer.service
 
+### === Setup Emergency Wi-Fi Access Point (always-on) === ###
+echo "[INFO] Marking ap0 as unmanaged by NetworkManager..."
+sudo mkdir -p /etc/NetworkManager/conf.d
+sudo tee /etc/NetworkManager/conf.d/unmanaged-ap0.conf > /dev/null <<EOF
+[keyfile]
+unmanaged-devices=interface-name:ap0
+EOF
+
+sudo systemctl reload NetworkManager
+
+echo "[INFO] Setting up emergency Wi-Fi Access Point (always-on)..."
+
+# Only create if not already up
+if ! ip link show ap0 &>/dev/null; then
+  # Create ap0
+  sudo iw dev wlan0 interface add ap0 type __ap || true
+  sudo ip addr add 192.168.50.1/24 dev ap0
+  sudo ip link set ap0 up
+fi
+
+# Write hostapd config
+cat <<EOF | sudo tee /etc/hostapd-ap0.conf > /dev/null
+interface=ap0
+ssid=$SSID
+hw_mode=g
+channel=6
+wpa=2
+wpa_passphrase=$PASSWORD
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+EOF
+
+# Write dnsmasq config
+cat <<EOF | sudo tee /etc/dnsmasq-ap0.conf > /dev/null
+interface=ap0
+bind-interfaces
+dhcp-range=192.168.50.10,192.168.50.100,255.255.255.0,24h
+EOF
+
+# Create systemd service for hostapd
+sudo tee /etc/systemd/system/ap0-hostapd.service > /dev/null <<EOF
+[Unit]
+Description=Hostapd for ap0
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/hostapd /etc/hostapd-ap0.conf
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create systemd service for dnsmasq
+sudo tee /etc/systemd/system/ap0-dnsmasq.service > /dev/null <<EOF
+[Unit]
+Description=DNSMasq for ap0
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/dnsmasq -C /etc/dnsmasq-ap0.conf
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create AP watchdog script
+sudo tee /usr/local/bin/check-ap0.sh > /dev/null <<'EOF'
+#!/bin/bash
+
+if ! ip link show ap0 &>/dev/null; then
+  echo "[watchdog] ap0 missing, recreating..."
+
+  iw dev wlan0 interface add ap0 type __ap || true
+  ip addr add 192.168.50.1/24 dev ap0
+  ip link set ap0 up
+
+  systemctl restart ap0-hostapd
+  systemctl restart ap0-dnsmasq
+else
+  echo "[watchdog] ap0 is up"
+fi
+EOF
+
+sudo chmod +x /usr/local/bin/check-ap0.sh
+
+# Create systemd service for watchdog
+sudo tee /etc/systemd/system/ap0-watchdog.service > /dev/null <<EOF
+[Unit]
+Description=Check and restore ap0 if missing
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/check-ap0.sh
+EOF
+
+# Create systemd timer for watchdog
+sudo tee /etc/systemd/system/ap0-watchdog.timer > /dev/null <<EOF
+[Unit]
+Description=Run ap0 watchdog every 30 seconds
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=30
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Enable and start both services
+sudo systemctl enable ap0-hostapd
+sudo systemctl enable ap0-dnsmasq
+sudo systemctl start ap0-hostapd
+sudo systemctl start ap0-dnsmasq
+
+# Enable and start watchdog
+sudo systemctl enable ap0-watchdog.timer
+sudo systemctl start ap0-watchdog.timer
+
+
+
 echo -e "[${GREEN}DONE${NC}] Setup complete. Edit ${YELLOW}$CONFIG_FILE${NC} to change any stream settings."
 echo -e "[${GREEN}INFO${NC}] The service file is located at: ${YELLOW}$SERVICE_FILE${NC}"
 echo -e "[${GREEN}INFO${NC}] The log file is located at: ${YELLOW}$LOG_PATH${NC}"
 echo -e "[${GREEN}INFO${NC}] You can now restart the service by running:"
 echo -e "${GREEN}sudo systemctl restart srt-streamer.service${NC}"
+
+echo -e "[${GREEN}INFO${NC}] AP '$SSID' is up. Connect and SSH to 192.168.50.1"
+echo -e "[${GREEN}INFO${NC}] You can now access the dashboard at http://$(hostname)"

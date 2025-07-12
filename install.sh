@@ -21,11 +21,15 @@ else
   read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST < /dev/tty
   read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT < /dev/tty
   read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY < /dev/tty
+  read -rp "Enter your devices desired SSID (e.g. 'SRTStreamer'): " SSID < /dev/tty
+  read -rp "Enter your devices desired password (e.g. 'mypassword'): " PASSWORD < /dev/tty
 
   sudo tee "$CONFIG_FILE" >/dev/null <<EOF
 DEST_HOST=${DEST_HOST}
 SRT_PORT=${SRT_PORT}
 TAILSCALE_AUTH_KEY=${TAILSCALE_AUTH_KEY}
+SSID=${SSID}
+PASSWORD=${PASSWORD}
 EOF
 
   echo "[INFO] Config file created at $CONFIG_FILE"
