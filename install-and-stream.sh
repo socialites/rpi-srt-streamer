@@ -670,28 +670,6 @@ sudo systemctl start ap0-dnsmasq
 sudo systemctl enable ap0-watchdog.timer
 sudo systemctl start ap0-watchdog.timer
 
-### === Import existing Wi-Fi connection into NetworkManager === ###
-PREEX_SSID=$(iw dev wlan0 link | awk -F ': ' '/SSID/ {print $2}')
-PREEX_PASSWORD=$(sudo grep -A4 "$PREEX_SSID" /etc/netplan/*.yaml | grep password | awk '{print $2}' | tr -d '"')
-
-if [ -n "$PREEX_SSID" ] && [ -n "$PREEX_PASSWORD" ]; then
-  echo "[INFO] Importing existing SSID '$PREEX_SSID' into NetworkManager..."
-
-  nmcli connection add type wifi ifname wlan0 con-name "$PREEX_SSID" ssid "$PREEX_SSID" \
-    wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PREEX_PASSWORD" ipv4.method auto
-
-  nmcli connection modify "$PREEX_SSID" connection.autoconnect yes
-
-  echo "[INFO] Marking wlan0 managed by NetworkManager..."
-  nmcli device set wlan0 managed yes
-
-  echo "[INFO] Deferring Netplan removal until NetworkManager connection is confirmed."
-  echo "sudo rm -f /etc/netplan/*.yaml" >> /usr/local/bin/cleanup-netplan.sh
-  chmod +x /usr/local/bin/cleanup-netplan.sh
-  echo "[INFO] Run 'sudo /usr/local/bin/cleanup-netplan.sh' only after verifying Wi-Fi is stable."
-fi
-
-
 # === Enable srt-streamer BEFORE reboot ===
 echo "[INFO] Enabling SRT streamer service..."
 sudo systemctl daemon-reload
@@ -700,7 +678,7 @@ sudo systemctl enable srt-streamer.service
 echo -e "[${GREEN}DONE${NC}] Setup complete. Edit ${YELLOW}$CONFIG_FILE${NC} to change any stream settings."
 echo -e "[${GREEN}INFO${NC}] The service file is located at: ${YELLOW}$SERVICE_FILE${NC}"
 echo -e "[${GREEN}INFO${NC}] The log file is located at: ${YELLOW}$LOG_PATH${NC}"
-echo -e "[${GREEN}INFO${NC}] Access Point '$SSID' is up. Connect and SSH to 192.168.50.1"
+echo -e "[${GREEN}INFO${NC}] Access Point '$SSID' is up. You can now connect and SSH to 192.168.50.1 in case you need to make any changes and you dont have a network connection."
 echo -e "[${GREEN}INFO${NC}] You can now access the dashboard at http://$(hostname)"
 
 echo "[INFO] Checking if the OTG and USB current settings are correct..."
