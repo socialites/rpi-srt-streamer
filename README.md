@@ -85,11 +85,8 @@ ssh youruser@your-pi-hostname.local
 Run the following command to run the install script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | sudo bash
+sudo curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | sudo bash
 ```
-
-> [!IMPORTANT]
-> This command can also be used to update the system to the latest version if you notice any issues or want to try the latest features.
 
 You’ll be prompted to enter:
 
@@ -100,6 +97,7 @@ You’ll be prompted to enter:
 This creates `/opt/streamer/config.env`, which can be edited later.
 
 This script:
+* Creates an update script in `/usr/local/bin/update` that can be used to update the system to the latest version if you notice any issues or want to update to the latest features. Just run `sudo update` to update the system.
 * Installs dependencies
 * Connects to Tailscale using your auth key
 * Detects Camlink audio automatically
@@ -178,6 +176,12 @@ To edit configuration later:
 ```bash
 sudo nano /opt/srt-streamer/config.env
 sudo /boot/firmware/install-and-stream.sh
+```
+
+To update the system to the latest version:
+
+```bash
+sudo update
 ```
 
 ## 🧪 Notes

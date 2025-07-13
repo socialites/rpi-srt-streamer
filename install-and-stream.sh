@@ -53,6 +53,17 @@ else
   echo "[INFO] Sudoers file already exists for $USERNAME, skipping."
 fi
 
+### === Install Update Script === ###
+echo "[INFO] Installing update script to /usr/local/bin/update..."
+
+sudo tee /usr/local/bin/update > /dev/null <<'EOF'
+#!/bin/bash
+curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | sudo bash
+EOF
+
+sudo chmod +x /usr/local/bin/update
+
+
 ### === Install Dependencies === ###
 echo "[INFO] Installing dependencies..."
 sudo apt-get update
