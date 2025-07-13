@@ -710,5 +710,5 @@ echo -e "[${GREEN}INFO${NC}] The log file is located at: ${YELLOW}$LOG_PATH${NC}
 echo -e "[${GREEN}INFO${NC}] You can now restart the service by running:"
 echo -e "${GREEN}sudo systemctl restart srt-streamer.service${NC}"
 
-echo -e "[${GREEN}INFO${NC}] AP '$SSID' is up. Connect and SSH to 192.168.50.1"
+echo -e "[${GREEN}INFO${NC}] Access Point '$SSID' is up. Connect and SSH to 192.168.50.1"
 echo -e "[${GREEN}INFO${NC}] You can now access the dashboard at http://$(hostname)"
