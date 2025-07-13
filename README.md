@@ -88,6 +88,9 @@ Run the following command to run the install script:
 curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | sudo bash
 ```
 
+> [!IMPORTANT]
+> This command can also be used to update the system to the latest version if you notice any issues or want to try the latest features.
+
 You’ll be prompted to enter:
 
 * Destination host
