@@ -70,8 +70,7 @@ sudo apt-get update
 sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils \
   iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse \
   isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez \
-  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat\
-  iw
+  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat
 
 ### === Clone and Build v4l2loopback === ###
 echo "[INFO] Cloning and building v4l2loopback..."
@@ -541,10 +540,12 @@ EOF
 echo "[INFO] Loading v4l2loopback module..."
 sudo modprobe v4l2loopback devices=1 video_nr=1 card_label="Preview" exclusive_caps=1
 
-
 echo "[INFO] Python web dashboard set up at http://$(hostname)/manage"
 
 ### === Setup Emergency Wi-Fi Access Point (always-on) === ###
+echo "[INFO] Installing Wi-Fi Access Point dependencies..."
+sudo apt-get install -y iw hostapd dnsmasq
+
 echo "[INFO] Marking ap0 as unmanaged by NetworkManager..."
 sudo mkdir -p /etc/NetworkManager/conf.d
 sudo tee /etc/NetworkManager/conf.d/unmanaged-ap0.conf > /dev/null <<EOF
