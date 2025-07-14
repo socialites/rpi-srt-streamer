@@ -70,8 +70,7 @@ sudo apt-get update
 sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils \
   iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse \
   isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez \
-  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat \
-  iw hostapd dnsmasq
+  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat
 
 ### === Clone and Build v4l2loopback === ###
 echo "[INFO] Cloning and building v4l2loopback..."
