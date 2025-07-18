@@ -220,3 +220,13 @@ Shows last 5 log lines for each every 2 seconds
 ```bash
 journalctl -u ap0-hostapd --no-pager
 ```
+
+Show logs for a specific service:
+```bash
+journalctl -u srt-streamer.service --no-pager
+```
+
+Show logs for a specific service and follow the logs:
+```bash
+journalctl -u srt-streamer.service --no-pager -f
+```

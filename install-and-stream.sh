@@ -686,6 +686,11 @@ echo -e "[${GREEN}INFO${NC}] You can now access the dashboard at http://$(hostna
 # === Add OLED Support ===
 echo "[INFO] Installing OLED service..."
 
+sudo curl -L -o /usr/local/bin/PixelOperator.ttf https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/PixelOperator.ttf
+sudo chmod 644 /usr/local/bin/PixelOperator.ttf
+sudo curl -L -o /usr/local/bin/lineawesome-webfont.ttf https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/lineawesome-webfont.ttf
+sudo chmod 644 /usr/local/bin/lineawesome-webfont.ttf
+
 sudo tee /usr/local/bin/oled.py > /dev/null << 'EOF'
 #!/usr/bin/env python3
 import time
