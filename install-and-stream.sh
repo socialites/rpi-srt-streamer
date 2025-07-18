@@ -70,7 +70,8 @@ sudo apt-get update
 sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils \
   iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse \
   isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez \
-  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat
+  python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat \
+  i2c-tools python3-smbus
 
 ### === Clone and Build v4l2loopback === ###
 echo "[INFO] Cloning and building v4l2loopback..."
@@ -227,11 +228,11 @@ sudo systemctl enable network-watcher.service
 sudo systemctl start network-watcher.service
 
 
-### === Install Node.js, npm, and pnpm === ###
-echo "[INFO] Installing Node.js, npm, and pnpm..."
+### === Install Node.js, npm, pnpm, and Python dependencies === ###
+echo "[INFO] Installing Node.js, npm, pnpm, and Python dependencies..."
 sudo curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
-sudo pip3 install aiohttp aiohttp_cors --break-system-packages
+sudo pip3 install aiohttp aiohttp_cors adafruit-circuitpython-ssd1306 pillow lgpio gpiozero --break-system-packages
 sudo npm install -g pnpm
 
 ### === Clone and Build the Dashboard Repo === ###
@@ -700,6 +701,12 @@ if echo "$PI_MODEL" | grep -q -E "Raspberry Pi (4|5)"; then
     REBOOT_NEEDED=true
   fi
 
+  if ! grep -q "dtparam=i2c_arm=on" "$BOOT_CONFIG"; then
+    echo "[INFO] Enabling i2c_arm=on in $BOOT_CONFIG"
+    echo -e "\n# Enable i2c_arm=on\ndtparam=i2c_arm=on" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+    REBOOT_NEEDED=true
+  fi
+
   if ! grep -q "otg_mode=1" "$BOOT_CONFIG"; then
     echo "[INFO] Enabling otg_mode=1 in $BOOT_CONFIG"
     echo -e "\n# Enable OTG mode\notg_mode=1" | sudo tee -a "$BOOT_CONFIG" > /dev/null
@@ -712,10 +719,10 @@ if echo "$PI_MODEL" | grep -q -E "Raspberry Pi (4|5)"; then
     sudo reboot
     exit 0
   else
-    echo "[INFO] USB power and OTG settings already configured."
+    echo "[INFO] USB power, OTG, and I2C settings already configured."
   fi
 else
-  echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG config."
+  echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG/I2C config."
 fi
 
 ### === Enable and Start Streamer === ###
