@@ -714,8 +714,8 @@ REFRESH_INTERVAL = 1.0  # Refresh interval in seconds
 oled_reset = gpiozero.OutputDevice(4, active_high=False)
 
 # Fonts
-font = ImageFont.truetype("PixelOperator.ttf", 12)
-icon_font = ImageFont.truetype("lineawesome-webfont.ttf", 12)
+font = ImageFont.truetype("/usr/local/bin/PixelOperator.ttf", 12)
+icon_font = ImageFont.truetype("/usr/local/bin/lineawesome-webfont.ttf", 12)
 
 # OLED setup
 i2c = board.I2C()
