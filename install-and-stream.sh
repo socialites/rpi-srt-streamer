@@ -335,7 +335,7 @@ async def network_stats():
                 "out_kbps": float(values[i * 2 + 1])
             }
 
-        relevant = ("enx", "eth0", "wlan0")
+        relevant = ("enx", "eth", "wlan")
         return {
             k: v for k, v in parsed.items()
             if any(k.startswith(prefix) for prefix in relevant)
