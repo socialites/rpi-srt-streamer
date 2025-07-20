@@ -170,11 +170,11 @@ To stream the logs to check for errors:
 tail -f /var/log/srt-streamer.log
 ```
 
-To edit configuration later:
+To edit configuration later using `nano` or `vim`:
 
 ```bash
 sudo nano /opt/srt-streamer/config.env
-sudo /boot/firmware/install-and-stream.sh
+sudo update
 ```
 
 To update the system to the latest version:

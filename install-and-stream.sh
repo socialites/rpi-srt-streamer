@@ -5,6 +5,7 @@ REPO_URL="https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main"
 CONFIG_FILE="/opt/srt-streamer/config.env"
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Screen Defaults
@@ -22,74 +23,8 @@ if [ -f "$CONFIG_FILE" ]; then
   source "$CONFIG_FILE"
   set +a
 else
-  echo "[WARN] Config not found at $CONFIG_FILE. Let's create it."
-
-  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST
-  read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT
-  read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY
-  read -rp "Enter your device's desired SSID (e.g. 'SRTStreamer'): " SSID
-  read -rp "Enter your device's Wi-Fi password (must be at least 8 characters): " PASSWORD
-
-  # Ask if they want a screen
-  while true; do
-    read -rp "Does this device have a display screen? (true/false): " SCREEN
-    case "$SCREEN" in
-      true|false) break ;;
-      *) echo "Please enter 'true' or 'false'." ;;
-    esac
-  done
-
-  # Only ask screen-related settings if SCREEN is true
-  if [ "$SCREEN" == "true" ]; then
-    echo "Select your screen size:"
-    select size in "0096 (0.96in)" "0180 (1.8in)" "0350 (3.5in)" "0400 (4.0in)"; do
-      case $REPLY in
-        1) SCREEN_SIZE="0096"; break ;;
-        2) SCREEN_SIZE="0180"; break ;;
-        3) SCREEN_SIZE="0350"; break ;;
-        4) SCREEN_SIZE="0400"; break ;;
-        *) echo "Invalid choice. Please choose 1–4." ;;
-      esac
-    done
-
-    while true; do
-      read -rp "Is the screen color RGB? (true/false): " SCREEN_RGB
-      case "$SCREEN_RGB" in
-        true|false) break ;;
-        *) echo "Please enter 'true' or 'false'." ;;
-      esac
-    done
-
-    while true; do
-      read -rp "Does the screen have touch input? (true/false): " SCREEN_TOUCH
-      case "$SCREEN_TOUCH" in
-        true|false) break ;;
-        *) echo "Please enter 'true' or 'false'." ;;
-      esac
-    done
-  else
-    SCREEN_SIZE="0096"
-    SCREEN_RGB="false"
-    SCREEN_TOUCH="false"
-  fi
-
-  # Save to config
-  sudo tee "$CONFIG_FILE" >/dev/null <<EOF
-DEST_HOST=${DEST_HOST}
-SRT_PORT=${SRT_PORT}
-TAILSCALE_AUTH_KEY=${TAILSCALE_AUTH_KEY}
-SSID=${SSID}
-PASSWORD=${PASSWORD}
-SCREEN=${SCREEN}
-SCREEN_SIZE=${SCREEN_SIZE}
-SCREEN_RGB=${SCREEN_RGB}
-SCREEN_TOUCH=${SCREEN_TOUCH}
-EOF
-
-  echo "[INFO] Configuration saved to $CONFIG_FILE."
-  set -a
-  source "$CONFIG_FILE"
-  set +a
+  echo -e "[${RED}ERROR${NC}] Config file $CONFIG_FILE not found! Please run `sudo curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | sudo bash` to create it."
+  exit 1
 fi
 
 # Function to generate config from template
