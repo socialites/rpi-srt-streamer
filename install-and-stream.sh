@@ -18,8 +18,9 @@ sudo mkdir -p "$(dirname "$CONFIG_FILE")"
 
 # Load config if it exists, otherwise prompt
 if [ -f "$CONFIG_FILE" ]; then
-  echo "[INFO] Config file found at $CONFIG_FILE. Loading configuration..."
+  set -a          # Automatically export all sourced variables
   source "$CONFIG_FILE"
+  set +a
 else
   echo "[WARN] Config not found at $CONFIG_FILE. Let's create it."
 

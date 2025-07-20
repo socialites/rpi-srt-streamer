@@ -14,6 +14,29 @@ SCREEN_SIZE="0096"
 SCREEN_RGB="false"
 SCREEN_TOUCH="false"
 
+ask_yes_no() {
+  local prompt="$1"
+  local var_name="$2"
+  local input
+
+  while true; do
+    read -rp "$prompt (y/n): " input < /dev/tty
+    case "${input,,}" in
+      y)
+        printf -v "$var_name" "true"
+        break
+        ;;
+      n)
+        printf -v "$var_name" "false"
+        break
+        ;;
+      *)
+        echo "Please enter 'y' or 'n'."
+        ;;
+    esac
+  done
+}
+
 # Ensure config directory exists
 sudo mkdir -p "$(dirname "$CONFIG_FILE")"
 
@@ -31,13 +54,7 @@ else
   read -rp "Enter your device's Wi-Fi password (must be at least 8 characters): " PASSWORD < /dev/tty
 
   # Ask if they want a screen
-  while true; do
-    read -rp "Does this device have a display screen? (true/false): " SCREEN < /dev/tty
-    case "$SCREEN" in
-      true|false) break ;;
-      *) echo "Please enter 'true' or 'false'." ;;
-    esac
-  done
+  ask_yes_no "Does this device have a display screen?" SCREEN
 
   # Only ask screen-related settings if SCREEN is true
   if [ "$SCREEN" == "true" ]; then
@@ -58,21 +75,9 @@ else
         esac
     done
 
-    while true; do
-      read -rp "Is the screen color RGB? (true/false): " SCREEN_RGB < /dev/tty
-      case "$SCREEN_RGB" in
-        true|false) break ;;
-        *) echo "Please enter 'true' or 'false'." ;;
-      esac
-    done
+    ask_yes_no "Is the screen color RGB?" SCREEN_RGB
 
-    while true; do
-      read -rp "Does the screen have touch input? (true/false): " SCREEN_TOUCH < /dev/tty
-      case "$SCREEN_TOUCH" in
-        true|false) break ;;
-        *) echo "Please enter 'true' or 'false'." ;;
-      esac
-    done
+    ask_yes_no "Does the screen have touch input?" SCREEN_TOUCH
   else
     SCREEN_SIZE="0096"
     SCREEN_RGB="false"
