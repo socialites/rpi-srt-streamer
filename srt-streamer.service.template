@@ -1,0 +1,22 @@
+[Unit]
+Description=SRT HDMI Streamer with Audio and Preview (single process)
+After=network-watcher.service
+Requires=network-watcher.service
+
+[Service]
+ExecStartPre=/usr/local/bin/reset-camlink.sh
+ExecStart=/bin/bash -c '/usr/bin/ffmpeg \
+  -f v4l2 -framerate 30 -video_size 3840x2160 -pixel_format nv12 -i /dev/video0 \
+  -f alsa -i $AUDIO_DEVICE \
+  -filter_complex "[0:v]split=2[main][preview];[preview]scale=640:360,format=yuv420p[previewout]" \
+  -map "[previewout]" -c:v libx264 -preset ultrafast -tune zerolatency -b:v 500k \
+  -f hls -hls_time 2 -hls_list_size 3 -hls_flags delete_segments /boot/firmware/hls/preview.m3u8 \
+  -map "[main]" -map 1:a -c:v libx264 -preset ultrafast -tune zerolatency -b:v 2500k \
+  -f mpegts "srt://$DEST_HOST:$SRT_PORT?pkt_size=1316&mode=caller" \
+  || (echo "[ERROR] ffmpeg exited with failure" >> /var/log/srt-streamer.log; exit 1)'
+Restart=always
+StandardOutput=append:/var/log/srt-streamer.log
+StandardError=append:/var/log/srt-streamer.log
+
+[Install]
+WantedBy=multi-user.target

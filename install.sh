@@ -8,6 +8,12 @@ TARGET_DIR="/boot/firmware"
 
 echo "[INFO] Using target directory: $TARGET_DIR"
 
+# Screen Defaults
+SCREEN="false"
+SCREEN_SIZE="0096"
+SCREEN_RGB="false"
+SCREEN_TOUCH="false"
+
 # Ensure config directory exists
 sudo mkdir -p "$(dirname "$CONFIG_FILE")"
 
@@ -18,21 +24,72 @@ if [ -f "$CONFIG_FILE" ]; then
 else
   echo "[WARN] Config not found at $CONFIG_FILE. Let's create it."
 
-  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST < /dev/tty
-  read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT < /dev/tty
-  read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY < /dev/tty
-  read -rp "Enter your devices desired SSID (e.g. 'SRTStreamer'): " SSID < /dev/tty
-  read -rp "Enter your devices desired password (e.g. 'mypassword' **Must be at least 8 characters**): " PASSWORD < /dev/tty
+  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST
+  read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT
+  read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY
+  read -rp "Enter your device's desired SSID (e.g. 'SRTStreamer'): " SSID
+  read -rp "Enter your device's Wi-Fi password (must be at least 8 characters): " PASSWORD
 
+  # Ask if they want a screen
+  while true; do
+    read -rp "Does this device have a display screen? (true/false): " SCREEN
+    case "$SCREEN" in
+      true|false) break ;;
+      *) echo "Please enter 'true' or 'false'." ;;
+    esac
+  done
+
+  # Only ask screen-related settings if SCREEN is true
+  if [ "$SCREEN" == "true" ]; then
+    echo "Select your screen size:"
+    select size in "0096 (0.96in)" "0180 (1.8in)" "0350 (3.5in)" "0400 (4.0in)"; do
+      case $REPLY in
+        1) SCREEN_SIZE="0096"; break ;;
+        2) SCREEN_SIZE="0180"; break ;;
+        3) SCREEN_SIZE="0350"; break ;;
+        4) SCREEN_SIZE="0400"; break ;;
+        *) echo "Invalid choice. Please choose 1–4." ;;
+      esac
+    done
+
+    while true; do
+      read -rp "Is the screen color RGB? (true/false): " SCREEN_RGB
+      case "$SCREEN_RGB" in
+        true|false) break ;;
+        *) echo "Please enter 'true' or 'false'." ;;
+      esac
+    done
+
+    while true; do
+      read -rp "Does the screen have touch input? (true/false): " SCREEN_TOUCH
+      case "$SCREEN_TOUCH" in
+        true|false) break ;;
+        *) echo "Please enter 'true' or 'false'." ;;
+      esac
+    done
+  else
+    SCREEN_SIZE="0096"
+    SCREEN_RGB="false"
+    SCREEN_TOUCH="false"
+  fi
+
+  # Save to config
   sudo tee "$CONFIG_FILE" >/dev/null <<EOF
 DEST_HOST=${DEST_HOST}
 SRT_PORT=${SRT_PORT}
 TAILSCALE_AUTH_KEY=${TAILSCALE_AUTH_KEY}
 SSID=${SSID}
 PASSWORD=${PASSWORD}
+SCREEN=${SCREEN}
+SCREEN_SIZE=${SCREEN_SIZE}
+SCREEN_RGB=${SCREEN_RGB}
+SCREEN_TOUCH=${SCREEN_TOUCH}
 EOF
 
-  echo "[INFO] Config file created at $CONFIG_FILE"
+  echo "[INFO] Configuration saved to $CONFIG_FILE."
+  set -a
+  source "$CONFIG_FILE"
+  set +a
 fi
 
 # === Basic Prechecks ===

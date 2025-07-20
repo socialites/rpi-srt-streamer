@@ -1,0 +1,10 @@
+interface=ap0
+ssid=${SSID}
+hw_mode=g
+channel=6
+wpa=2
+wpa_passphrase=${PASSWORD}
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+ctrl_interface=/var/run/hostapd
+ctrl_interface_group=0

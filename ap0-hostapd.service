@@ -1,0 +1,10 @@
+[Unit]
+Description=Hostapd for ap0
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/hostapd /etc/hostapd-ap0.conf
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

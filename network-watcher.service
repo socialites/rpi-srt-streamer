@@ -1,0 +1,11 @@
+[Unit]
+Description=Network Priority Watcher
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/network-watcher.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

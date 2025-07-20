@@ -1,0 +1,7 @@
+[Unit]
+Description=Check and restore ap0 if missing
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/check-ap0.sh

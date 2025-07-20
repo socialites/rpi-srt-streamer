@@ -1,0 +1,13 @@
+[Unit]
+Description=OLED Status Display
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/oled.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
