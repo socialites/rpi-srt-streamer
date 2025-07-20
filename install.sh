@@ -24,15 +24,15 @@ if [ -f "$CONFIG_FILE" ]; then
 else
   echo "[WARN] Config not found at $CONFIG_FILE. Let's create it."
 
-  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST
-  read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT
-  read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY
-  read -rp "Enter your device's desired SSID (e.g. 'SRTStreamer'): " SSID
-  read -rp "Enter your device's Wi-Fi password (must be at least 8 characters): " PASSWORD
+  read -rp "Enter your SRT destination host (Tailscale destination's machine name) (e.g. desktop): " DEST_HOST < /dev/tty
+  read -rp "Enter your SRT port (e.g. 1234): " SRT_PORT < /dev/tty
+  read -rp "Enter your Tailscale auth key (starts with tskey-auth-xxxxx): " TAILSCALE_AUTH_KEY < /dev/tty
+  read -rp "Enter your device's desired SSID (e.g. 'SRTStreamer'): " SSID < /dev/tty
+  read -rp "Enter your device's Wi-Fi password (must be at least 8 characters): " PASSWORD < /dev/tty
 
   # Ask if they want a screen
   while true; do
-    read -rp "Does this device have a display screen? (true/false): " SCREEN
+    read -rp "Does this device have a display screen? (true/false): " SCREEN < /dev/tty
     case "$SCREEN" in
       true|false) break ;;
       *) echo "Please enter 'true' or 'false'." ;;
@@ -53,7 +53,7 @@ else
     done
 
     while true; do
-      read -rp "Is the screen color RGB? (true/false): " SCREEN_RGB
+      read -rp "Is the screen color RGB? (true/false): " SCREEN_RGB < /dev/tty
       case "$SCREEN_RGB" in
         true|false) break ;;
         *) echo "Please enter 'true' or 'false'." ;;
@@ -61,7 +61,7 @@ else
     done
 
     while true; do
-      read -rp "Does the screen have touch input? (true/false): " SCREEN_TOUCH
+      read -rp "Does the screen have touch input? (true/false): " SCREEN_TOUCH < /dev/tty
       case "$SCREEN_TOUCH" in
         true|false) break ;;
         *) echo "Please enter 'true' or 'false'." ;;
