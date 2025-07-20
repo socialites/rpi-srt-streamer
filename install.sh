@@ -42,14 +42,20 @@ else
   # Only ask screen-related settings if SCREEN is true
   if [ "$SCREEN" == "true" ]; then
     echo "Select your screen size:"
-    select size in "0096 (0.96in)" "0180 (1.8in)" "0350 (3.5in)" "0400 (4.0in)"; do
-      case $REPLY in
-        1) SCREEN_SIZE="0096"; break ;;
-        2) SCREEN_SIZE="0180"; break ;;
-        3) SCREEN_SIZE="0350"; break ;;
-        4) SCREEN_SIZE="0400"; break ;;
-        *) echo "Invalid choice. Please choose 1–4." ;;
-      esac
+    echo "1) 0096 (0.96in)"
+    echo "2) 0180 (1.8in)"
+    echo "3) 0350 (3.5in)"
+    echo "4) 0400 (4.0in)"
+
+    while true; do
+        read -rp "#? " CHOICE < /dev/tty
+        case "$CHOICE" in
+            1) SCREEN_SIZE="0096"; break ;;
+            2) SCREEN_SIZE="0180"; break ;;
+            3) SCREEN_SIZE="0350"; break ;;
+            4) SCREEN_SIZE="0400"; break ;;
+            *) echo "Invalid choice. Please choose 1–4." ;;
+        esac
     done
 
     while true; do
