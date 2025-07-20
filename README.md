@@ -117,6 +117,9 @@ This script:
 > [!TIP]
 > I would recommend [disabling Key Expiry in Tailscale](https://tailscale.com/kb/1028/key-expiry#disabling-key-expiry). This will allow you to use the same auth key for a longer period of time and you wont have to SSH in re-authenticate every 90 or 180 days when the key expires. You can do this from the Tailscale dashboard.
 
+> [!NOTE]
+> If anything went wrong during the intall, you can use the `sudo update` command to re-run the install script or just re-run the command `sudo curl -fsSL https://raw.githubusercontent.com/socialites/rpi-srt-streamer/main/install.sh | sudo bash`.
+
 ### You're now ready to stream! 🎉 <!--- {ignore=true} -->
 
 ## Everything below this point is optional. <!--- {ignore=true} -->
