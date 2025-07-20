@@ -42,10 +42,10 @@ else
   # Only ask screen-related settings if SCREEN is true
   if [ "$SCREEN" == "true" ]; then
     echo "Select your screen size:"
-    echo "1) 0096 (0.96in)"
-    echo "2) 0180 (1.8in)"
-    echo "3) 0350 (3.5in)"
-    echo "4) 0400 (4.0in)"
+    echo "1) 0.96in"
+    echo "2) 1.8in"
+    echo "3) 3.5in"
+    echo "4) 4.0in"
 
     while true; do
         read -rp "#? " CHOICE < /dev/tty
