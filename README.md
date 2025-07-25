@@ -39,7 +39,7 @@ Another comparable package is the [BELABOX](https://belabox.net/)
 * **USB Camlink or HDMI capture device**
 * **HDMI source (e.g., camera or console)**
 * **Mobile data via USB tethering or USB modem**
-* **Ubuntu Server 24.04+ (ARM64)**
+* **Raspberry Pi OS 32 bit**
 * **Optional**: USB microphone or audio input via HDMI
 
 ## ⚙️ Features
@@ -48,8 +48,31 @@ Another comparable package is the [BELABOX](https://belabox.net/)
 * Streams HDMI video + audio via SRT to a destination machine
 * Starts streaming automatically on boot via `systemd`
 * Logs stream output/errors to `/var/log/srt-streamer.log`
+* Displays a dashboard on an OLED screen with the stream status, SRT stats, and more.
+* Creates a web-accessible dashboard at `http://your-pi-hostname/` to view information about the stream.
+* Creates a fallback Wi-Fi Access Point (AP) with the SSID and password you provided. This is useful if you're on the go and don't have a network connection but need to connect to the Pi to manage anything.
+
 
 ## 🔧 Setup Overview
+
+### 0. (Optional) Install a screen
+
+If you want to install a screen, connect it to the GPIO pins on the Pi.
+You can use a breadboard to connect the screen to the Pi if thats easier for you.
+
+The GPIO pins are as follows:
+
+0.96" OLED Screen:
+* VCC: Pin 1 (3.3V)
+* GND: Pin 9 (GND)
+* SDA: Pin 3 (GPIO2)
+* SCL: Pin 5 (GPIO3)
+
+[0.96" OLED Screen YouTube Refrence](https://youtu.be/pdaDvPCdAlY?t=123)
+
+
+
+
 
 ### 1. Flash Ubuntu Server <!--- {ignore=true} -->
 
@@ -232,3 +255,13 @@ Show logs for a specific service and follow the logs:
 ```bash
 journalctl -u srt-streamer.service --no-pager -f
 ```
+
+[Reference for TFT Screen](https://www.cytron.io/tutorial/3.5-inch-TFT-RPI5)
+[RPI Pinout](https://vilros.com/pages/raspberry-pi-5-pinout)
+Some guides that didnt work:
+
+
+https://vilros.com/pages/raspberry-pi-5-pinout
+
+
+https://www.lcdwiki.com/3.5inch_SPI_Module_ILI9488_SKU:MSP3520

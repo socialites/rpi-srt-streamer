@@ -110,32 +110,128 @@ async def handle_post(request):
 
 async def scan_networks(request):
     try:
-        result = subprocess.check_output(["nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"], text=True)
+        result = subprocess.check_output([
+            "nmcli", "-t", "-f", "IN-USE,SSID,RATE,SIGNAL,SECURITY", "device", "wifi", "list"
+        ], text=True)
+
         networks = []
         for line in result.strip().splitlines():
-            parts = line.strip().split(":")
-            if len(parts) >= 2:
-                ssid, signal = parts[0], parts[1]
-                security = parts[2] if len(parts) > 2 else "UNKNOWN"
-                if ssid:  # skip empty SSIDs
-                    networks.append({"ssid": ssid, "signal": signal, "security": security})
+            parts = line.split(":")
+            if len(parts) >= 5:
+                in_use = parts[0].strip() == "*"
+                ssid = parts[1].strip()
+                rate = parts[2].strip()
+                signal = int(parts[3].strip())
+                security = parts[4].strip() or "UNKNOWN"
+
+                if ssid:  # skip blank SSIDs
+                    networks.append({
+                        "ssid": ssid,
+                        "in_use": in_use,
+                        "rate": rate,
+                        "signal": signal,
+                        "security": security
+                    })
+
         return web.json_response(networks)
+
     except subprocess.CalledProcessError as e:
-        return web.Response(status=500, text=str(e))
+        return web.Response(status=500, text=f"Error scanning Wi-Fi networks: {str(e)}")
 
 async def connect_wifi(request):
     data = await request.json()
     ssid = data.get("ssid")
     password = data.get("password")
-    if not ssid or not password:
-        return web.Response(status=400, text="Missing SSID or password")
+
+    if not ssid:
+        return web.Response(status=400, text="Missing SSID")
+
+    # Build the nmcli connect command
+    cmd = ["nmcli", "device", "wifi", "connect", ssid]
+    if password:
+        cmd += ["password", password]
 
     try:
-        subprocess.check_call(["nmcli", "device", "wifi", "connect", ssid, "password", password])
-        return web.Response(status=200, text=f"Connected to {ssid}")
-    except subprocess.CalledProcessError as e:
-        return web.Response(status=500, text=str(e))
+        # Run in executor to avoid blocking the event loop
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, lambda: subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True))
 
+        # Confirm active connection switched
+        check_cmd = ["nmcli", "-t", "-f", "ACTIVE,SSID", "dev", "wifi"]
+        active_output = await loop.run_in_executor(None, lambda: subprocess.check_output(check_cmd, text=True))
+        active_ssid = None
+        for line in active_output.splitlines():
+            if line.startswith("yes:"):
+                active_ssid = line.split(":")[1]
+                break
+
+        if active_ssid == ssid:
+            return web.json_response({"status": "success", "message": f"Connected to {ssid}"})
+        else:
+            return web.json_response({"status": "partial", "message": f"Tried connecting to {ssid}, but it's not the active connection"}, status=202)
+
+    except subprocess.CalledProcessError as e:
+        # Check common failure reasons
+        error_output = e.output.strip() if hasattr(e, 'output') else str(e)
+        if "No network with SSID" in error_output:
+            msg = f"Network '{ssid}' not found."
+        elif "secrets were required" in error_output or "wrong password" in error_output.lower():
+            msg = "Wrong password or authentication failed."
+        else:
+            msg = f"Failed to connect: {error_output}"
+
+        return web.json_response({"status": "error", "message": msg}, status=500)
+
+async def forget_wifi(request):
+    data = await request.json()
+    ssid = data.get("ssid")
+
+    if not ssid:
+        return web.Response(status=400, text="Missing SSID")
+
+    loop = asyncio.get_event_loop()
+
+    try:
+        # First find the connection name (can be different from SSID)
+        conns = await loop.run_in_executor(
+            None,
+            lambda: subprocess.check_output(["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"], text=True)
+        )
+
+        matching_profiles = [
+            line.split(":")[0]
+            for line in conns.strip().splitlines()
+            if line.startswith(ssid + ":wifi")
+        ]
+
+        if not matching_profiles:
+            return web.json_response({"status": "not_found", "message": f"No saved connection for '{ssid}'"}, status=404)
+
+        for profile in matching_profiles:
+            await loop.run_in_executor(None, lambda: subprocess.check_call(["nmcli", "connection", "delete", profile]))
+
+        return web.json_response({"status": "success", "message": f"Deleted profile(s) for '{ssid}'"})
+
+    except subprocess.CalledProcessError as e:
+        return web.Response(status=500, text=f"Failed to forget Wi-Fi: {e}")
+
+async def disconnect_wifi(request):
+    data = await request.json()
+    ssid = data.get("ssid")
+
+    if not ssid:
+        return web.Response(status=400, text="Missing SSID")
+
+    loop = asyncio.get_event_loop()
+
+    try:
+        # Attempt to bring down the Wi-Fi connection by SSID
+        await loop.run_in_executor(None, lambda: subprocess.check_call(["nmcli", "connection", "down", ssid]))
+
+        return web.json_response({"status": "success", "message": f"Disconnected from '{ssid}'"})
+
+    except subprocess.CalledProcessError as e:
+        return web.Response(status=500, text=f"Failed to disconnect: {e}")
 # === WEBSOCKET SUPPORT ===
 
 async def websocket_handler(request):
@@ -177,6 +273,8 @@ routes = [
     web.get('/api/network/ws', websocket_handler),
     web.get('/api/wifi/networks', scan_networks),
     web.post('/api/wifi/connect', connect_wifi),
+    web.post('/api/wifi/forget', forget_wifi),
+    web.post('/api/wifi/disconnect', disconnect_wifi),
     web.post('/api/restart/{service}', handle_post),
     web.post('/api/shutdown', handle_post),
     web.post('/api/reboot', handle_post),

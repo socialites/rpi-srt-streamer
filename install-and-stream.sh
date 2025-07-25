@@ -95,12 +95,12 @@ sudo apt-get install -y ffmpeg curl gnupg2 v4l-utils alsa-utils \
   iproute2 usbmuxd libimobiledevice6 libimobiledevice-utils ifuse \
   isc-dhcp-client jq usbutils net-tools network-manager bluetooth bluez \
   python3 python3-pip linux-headers-$(uname -r) build-essential git dkms ifstat \
-  i2c-tools python3-smbus gettext-base
+  i2c-tools python3-smbus gettext-base cmake ifstat
 
 ### === Clone and Build v4l2loopback === ###
 echo "[INFO] Cloning and building v4l2loopback..."
 if [ ! -d "/usr/src/v4l2loopback" ]; then
-  git clone https://github.com/umlaeute/v4l2loopback.git /tmp/v4l2loopback
+  git clone https://github.com/socialites/v4l2loopback.git /tmp/v4l2loopback
   cd /tmp/v4l2loopback
   make
   sudo make install
@@ -320,28 +320,48 @@ if echo "$PI_MODEL" | grep -q -E "Raspberry Pi (4|5)"; then
     REBOOT_NEEDED=true
   fi
 
-  if ! grep -q "dtparam=i2c_arm=on" "$BOOT_CONFIG"; then
-    echo "[INFO] Enabling i2c_arm=on in $BOOT_CONFIG"
-    echo -e "\n# Enable i2c_arm=on\ndtparam=i2c_arm=on" | sudo tee -a "$BOOT_CONFIG" > /dev/null
-    REBOOT_NEEDED=true
-  fi
-
   if ! grep -q "otg_mode=1" "$BOOT_CONFIG"; then
     echo "[INFO] Enabling otg_mode=1 in $BOOT_CONFIG"
     echo -e "\n# Enable OTG mode\notg_mode=1" | sudo tee -a "$BOOT_CONFIG" > /dev/null
     REBOOT_NEEDED=true
   fi
 
+  # Conditionally enable I2C if screen size is 0096 (i.e., OLED)
+  if [ "$SCREEN_SIZE" == "0096" ]; then
+    if ! grep -q "^dtparam=i2c_arm=on" "$BOOT_CONFIG"; then
+      echo "[INFO] Enabling i2c_arm=on in $BOOT_CONFIG (for OLED screen)"
+      echo -e "\n# Enable I2C for OLED\ndtparam=i2c_arm=on" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+      REBOOT_NEEDED=true
+    fi
+  fi
+
+  # Enable SPI and install LCD35-show if using 3.5" TFT
+  if [ "$SCREEN_SIZE" == "0350" ]; then
+    if ! grep -q "dtoverlay=tft35a" "$BOOT_CONFIG"; then
+      echo "[INFO] Installing TFT screen driver (LCD35-show)"
+      # Backup config just in case
+      [ ! -f "$BOOT_CONFIG.bak" ] && sudo cp "$BOOT_CONFIG" "$BOOT_CONFIG.bak"
+      curl -fsSL https://raw.githubusercontent.com/socialites/LCD-show/master/LCD35-show | sudo bash
+      REBOOT_NEEDED=true
+    else
+      echo "[INFO] TFT screen already configured. Skipping LCD35-show."
+    fi
+  fi
+
   if [ "$REBOOT_NEEDED" = true ]; then
-    echo -e "[${YELLOW}INFO${NC}] USB power and OTG settings updated. Rebooting in 5 seconds..."
-    sleep 5
-    sudo reboot
-    exit 0
+    echo -e "[${YELLOW}INFO${NC}] USB power, OTG, and screen settings updated. Rebooting when finished"
   else
-    echo "[INFO] USB power, OTG, and I2C settings already configured."
+    echo "[INFO] USB power, OTG, and I2C/SPI settings already configured."
   fi
 else
-  echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG/I2C config."
+  echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG/I2C/SPI config."
+fi
+
+if [ "$REBOOT_NEEDED" = true ]; then
+  echo -e "[${YELLOW}INFO${NC}] Rebooting..."
+  sleep 5
+  sudo reboot
+  exit 0
 fi
 
 ### === Enable and Start Streamer === ###
