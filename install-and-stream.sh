@@ -307,6 +307,29 @@ if [[ $SCREEN == "true" && ($SCREEN_SIZE == "0096" || $SCREEN_SIZE == "0180") ]]
     sudo systemctl start oled.service
 fi
 
+if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
+    echo "[INFO] Installing Screen Interface..."
+    sudo apt-get install -y chromium-browser xdotool unclutter
+
+    mkdir -p /home/root/kiosk
+    cd /home/root/kiosk
+    generate_config /home/root/kiosk/start-kiosk.sh
+    chmod +x /home/root/kiosk/start-kiosk.sh
+
+    # Autostart setup
+    AUTOSTART_FILE="/etc/xdg/lxsession/LXDE-pi/autostart"
+    AUTOSTART_ENTRY="@/home/root/kiosk/start-kiosk.sh"
+
+    if ! grep -Fxq "$AUTOSTART_ENTRY" "$AUTOSTART_FILE"; then
+        echo "[INFO] Adding kiosk autostart entry to $AUTOSTART_FILE"
+        echo "$AUTOSTART_ENTRY" | tee -a "$AUTOSTART_FILE" > /dev/null
+    else
+        echo "[INFO] Kiosk autostart entry already present."
+    fi
+
+    echo "[INFO] Kiosk setup complete. Reboot for it to launch."
+fi
+
 echo "[INFO] Checking if the OTG and USB current settings are correct..."
 
 ### === Enable higher USB current + OTG mode (Pi 4/5 only) === ###
@@ -362,35 +385,14 @@ else
   echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG/I2C/SPI config."
 fi
 
-if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
-    echo "[INFO] Installing Screen Interface..."
-    sudo apt-get install -y chromium-browser xdotool unclutter
-
-    mkdir -p /home/root/kiosk
-    cd /home/root/kiosk
-    generate_config /home/root/kiosk/start-kiosk.sh
-    chmod +x /home/root/kiosk/start-kiosk.sh
-
-    # Autostart setup
-    AUTOSTART_FILE="/etc/xdg/lxsession/LXDE-pi/autostart"
-    AUTOSTART_ENTRY="@/home/root/kiosk/start-kiosk.sh"
-
-    if ! grep -Fxq "$AUTOSTART_ENTRY" "$AUTOSTART_FILE"; then
-        echo "[INFO] Adding kiosk autostart entry to $AUTOSTART_FILE"
-        echo "$AUTOSTART_ENTRY" | tee -a "$AUTOSTART_FILE" > /dev/null
-    else
-        echo "[INFO] Kiosk autostart entry already present."
-    fi
-
-    echo "[INFO] Kiosk setup complete. Reboot for it to launch."
-fi
-
 if [ "$REBOOT_NEEDED" = true ]; then
   echo -e "[${YELLOW}INFO${NC}] Rebooting..."
   sleep 5
   sudo reboot
   exit 0
 fi
+
+## TODO: Add rotation = 0 to config.txt
 
 ### === Enable and Start Streamer === ###
 echo "[INFO] Enabling and starting SRT streamer service..."
