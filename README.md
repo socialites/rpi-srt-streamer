@@ -41,6 +41,10 @@ Another comparable package is the [BELABOX](https://belabox.net/)
 * **Mobile data via USB tethering or USB modem**
 * **Raspberry Pi OS 32 bit**
 * **Optional**: USB microphone or audio input via HDMI
+* **Optional**: [0.96" OLED Screen](https://www.amazon.com/dp/B0833PF7ML)
+* **Optional**: [1.8" OLED Screen](https://www.amazon.com/dp/B0D31BGJWF)
+* **Optional**: [3.5" TFT Screen](https://www.amazon.com/dp/B0BJDTL9J3)
+
 
 ## ⚙️ Features
 
