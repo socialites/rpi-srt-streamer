@@ -282,28 +282,29 @@ echo -e "[${GREEN}INFO${NC}] The log file is located at: ${YELLOW}/var/log/srt-s
 echo -e "[${GREEN}INFO${NC}] Access Point '$SSID' is up. You can now connect and SSH to 192.168.50.1 in case you need to make any changes and you dont have a network connection."
 echo -e "[${GREEN}INFO${NC}] You can now access the dashboard at http://$(hostname)"
 
-if [ "$SCREEN" == "true" ]; then
-    if [ "$SCREEN_SIZE" == "0096" || "$SCREEN_SIZE" == "0180" ]; then
-        # === Add OLED Support ===
-        echo "[INFO] Installing OLED service..."
 
-        echo "[INFO] Downloading fonts..."
-        generate_config /usr/local/bin/PixelOperator.ttf
-        sudo chmod 644 /usr/local/bin/PixelOperator.ttf
-        generate_config /usr/local/bin/lineawesome-webfont.ttf
-        sudo chmod 644 /usr/local/bin/lineawesome-webfont.ttf
+if [[ $SCREEN == "true" && ($SCREEN_SIZE == "0096" || $SCREEN_SIZE == "0180") ]]; then
+    # === Add OLED Support ===
+    echo "[INFO] Small screen detected"
+    echo -e "\n[INFO] === OLED Setup ($SCREEN_SIZE) ===\n"
+    echo "[INFO] Installing OLED service..."
 
-        echo "[INFO] Creating oled.py..."
-        sudo curl -L -o /usr/local/bin/oled.py "${REPO_URL}/oled${SCREEN_SIZE}.py"
-        sudo chmod +x /usr/local/bin/oled.py
+    echo "[INFO] Downloading fonts..."
+    generate_config /usr/local/bin/PixelOperator.ttf
+    sudo chmod 644 /usr/local/bin/PixelOperator.ttf
+    generate_config /usr/local/bin/lineawesome-webfont.ttf
+    sudo chmod 644 /usr/local/bin/lineawesome-webfont.ttf
 
-        sudo curl -fsSL -o /etc/systemd/system/oled.service "${REPO_URL}/oled.service"
+    echo "[INFO] Creating oled.py..."
+    sudo curl -L -o /usr/local/bin/oled.py "${REPO_URL}/oled${SCREEN_SIZE}.py"
+    sudo chmod +x /usr/local/bin/oled.py
 
-        sudo systemctl daemon-reexec
-        sudo systemctl daemon-reload
-        sudo systemctl enable oled.service
-        sudo systemctl start oled.service
-    fi
+    sudo curl -fsSL -o /etc/systemd/system/oled.service "${REPO_URL}/oled.service"
+
+    sudo systemctl daemon-reexec
+    sudo systemctl daemon-reload
+    sudo systemctl enable oled.service
+    sudo systemctl start oled.service
 fi
 
 echo "[INFO] Checking if the OTG and USB current settings are correct..."
@@ -361,25 +362,24 @@ else
   echo "[INFO] Pi model not Pi 4 or Pi 5. Skipping USB current/OTG/I2C/SPI config."
 fi
 
-if [ "$SCREEN" == "true" ]; then
-    if [ "$SCREEN_SIZE" == "0350" ]; then
-        echo "[INFO] Installing Screen Interface..."
-        sudo apt-get install -y chromium-browser xdotool unclutter
+if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
+    echo "[INFO] Installing Screen Interface..."
+    sudo apt-get install -y chromium-browser xdotool unclutter
 
-        mkdir -p ~/kiosk
-        cd ~/kiosk
-        generate_config ~/kiosk/start-kiosk.sh
-        chmod +x ~/kiosk/start-kiosk.sh
+    mkdir -p ~/kiosk
+    cd ~/kiosk
+    generate_config ~/kiosk/start-kiosk.sh
+    chmod +x ~/kiosk/start-kiosk.sh
 
-        mkdir -p /home/root/.config/autostart
-        generate_config /home/root/.config/autostart/start-kiosk.desktop
+    mkdir -p /home/root/.config/autostart
+    generate_config /home/root/.config/autostart/start-kiosk.desktop
 
-        echo "[INFO] Starting kiosk..."
-        ~/kiosk/start-kiosk.sh
+    echo "[INFO] Starting kiosk..."
+    ~/kiosk/start-kiosk.sh
 
-        echo "[INFO] Kiosk started."
-    fi
+    echo "[INFO] Kiosk started."
 fi
+
 if [ "$REBOOT_NEEDED" = true ]; then
   echo -e "[${YELLOW}INFO${NC}] Rebooting..."
   sleep 5
