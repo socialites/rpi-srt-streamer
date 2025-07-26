@@ -12,4 +12,5 @@ chromium-browser \
   --disable-infobars \
   --kiosk http://localhost:80 \
   --incognito \
-  --no-sandbox
+  --no-sandbox \
+  --touch-events=enabled
