@@ -366,18 +366,23 @@ if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
     echo "[INFO] Installing Screen Interface..."
     sudo apt-get install -y chromium-browser xdotool unclutter
 
-    mkdir -p ~/kiosk
-    cd ~/kiosk
-    generate_config ~/kiosk/start-kiosk.sh
-    chmod +x ~/kiosk/start-kiosk.sh
+    mkdir -p /home/root/kiosk
+    cd /home/root/kiosk
+    generate_config /home/root/kiosk/start-kiosk.sh
+    chmod +x /home/root/kiosk/start-kiosk.sh
 
-    mkdir -p /home/root/.config/autostart
-    generate_config /home/root/.config/autostart/start-kiosk.desktop
+    # Autostart setup
+    AUTOSTART_FILE="/etc/xdg/lxsession/LXDE-pi/autostart"
+    AUTOSTART_ENTRY="@/home/root/kiosk/start-kiosk.sh"
 
-    echo "[INFO] Starting kiosk..."
-    ~/kiosk/start-kiosk.sh
+    if ! grep -Fxq "$AUTOSTART_ENTRY" "$AUTOSTART_FILE"; then
+        echo "[INFO] Adding kiosk autostart entry to $AUTOSTART_FILE"
+        echo "$AUTOSTART_ENTRY" | tee -a "$AUTOSTART_FILE" > /dev/null
+    else
+        echo "[INFO] Kiosk autostart entry already present."
+    fi
 
-    echo "[INFO] Kiosk started."
+    echo "[INFO] Kiosk setup complete. Reboot for it to launch."
 fi
 
 if [ "$REBOOT_NEEDED" = true ]; then

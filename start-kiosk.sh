@@ -11,4 +11,5 @@ chromium-browser \
   --noerrdialogs \
   --disable-infobars \
   --kiosk http://localhost:80 \
-  --incognito
+  --incognito \
+  --no-sandbox
