@@ -258,6 +258,16 @@ generate_config /etc/systemd/system/ap0-watchdog.service
 # Create systemd timer for watchdog
 generate_config /etc/systemd/system/ap0-watchdog.timer
 
+# Create splash only if it hasnt been created yet per our spec
+if [ ! -f "/usr/share/plymouth/themes/pix/splashv1" ]; then
+  echo "[INFO] Creating splash..."
+  generate_config /usr/share/plymouth/themes/pix/splash.png
+  sudo plymouth-set-default-theme -R pix
+  sudo touch /usr/share/plymouth/themes/pix/splashv1
+else
+  echo "[INFO] Splash already exists, skipping."
+fi
+
 # Reload systemd
 sudo systemctl daemon-reload
 
