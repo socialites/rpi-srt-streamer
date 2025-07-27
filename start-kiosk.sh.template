@@ -13,7 +13,7 @@ SCALE_FACTOR="1"
 # Apply query param and scale factor if SCREEN is set
 if [[ "${SCREEN}" == "true" && -n "${SCREEN_SIZE}" ]]; then
   URL+="?screen=${SCREEN_SIZE}"
-  SCALE_FACTOR="0.75"
+  SCALE_FACTOR="0.6"
 fi
 
 # Launch Chromium with constructed values
@@ -23,5 +23,5 @@ chromium-browser \
   --incognito \
   --no-sandbox \
   --touch-events=enabled \
-  --force-device-scale-factor="$SCALE_FACTOR" \
-  --kiosk "$URL"
+  --force-device-scale-factor=$SCALE_FACTOR \
+  --kiosk $URL
