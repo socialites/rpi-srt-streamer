@@ -13,4 +13,6 @@ chromium-browser \
   --kiosk http://localhost:80 \
   --incognito \
   --no-sandbox \
-  --touch-events=enabled
+  --touch-events=enabled \
+  --force-device-scale-factor=1 \
+  --window-size=480,320 \
