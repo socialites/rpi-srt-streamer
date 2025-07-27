@@ -6,20 +6,22 @@ unclutter -idle 0.5 &
 # Wait a bit to ensure desktop is ready
 sleep 10
 
-# Construct the URL with optional screen param
+# Default values
 URL="http://localhost:80"
 SCALE_FACTOR="1"
-if [[ "$SCREEN" == "true" ]]; then
+
+# Apply query param and scale factor if SCREEN is set
+if [[ "${SCREEN}" == "true" && -n "${SCREEN_SIZE}" ]]; then
   URL+="?screen=${SCREEN_SIZE}"
   SCALE_FACTOR="0.75"
 fi
 
-# Launch Chromium with the constructed URL in kiosk mode
+# Launch Chromium with constructed values
 chromium-browser \
   --noerrdialogs \
   --disable-infobars \
   --incognito \
   --no-sandbox \
   --touch-events=enabled \
-  --force-device-scale-factor=${SCALE_FACTOR} \
+  --force-device-scale-factor="$SCALE_FACTOR" \
   --kiosk "$URL"
