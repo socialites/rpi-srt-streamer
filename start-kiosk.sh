@@ -10,9 +10,11 @@ sleep 10
 chromium-browser \
   --noerrdialogs \
   --disable-infobars \
-  --kiosk http://localhost:80 \
   --incognito \
   --no-sandbox \
   --touch-events=enabled \
-  --force-device-scale-factor=1 \
-  --window-size=480,320 \
+  --force-device-scale-factor=0.6 \
+  --kiosk http://localhost:80 \
+  #--app=http://localhost:80 \
+  #--window-size=320,480 \
+  #--window-position=0,0 \
