@@ -319,7 +319,7 @@ if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
     # Autostart setup
     AUTOSTART_FILE="/etc/xdg/lxsession/LXDE-pi/autostart"
     AUTOSTART_ENTRY="@/home/root/kiosk/start-kiosk.sh"
-    TRANSFORM_TOUCH='@xinput set-prop "ADS7846 Touchscreen" "Coordinate Transformation Matrix" 0 1 0 -1 0 1 0 0 1'
+    AUTOSTART_TOUCH="@/home/root/kiosk/fix-touch.sh"
 
     if ! grep -Fxq "$AUTOSTART_ENTRY" "$AUTOSTART_FILE"; then
         echo "[INFO] Adding kiosk autostart entry to $AUTOSTART_FILE"
@@ -328,11 +328,14 @@ if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
         echo "[INFO] Kiosk autostart entry already present."
     fi
 
-    if ! grep -Fxq "$TRANSFORM_TOUCH" "$AUTOSTART_FILE"; then
-        echo "[INFO] Adding transform touch entry to $AUTOSTART_FILE"
-        echo "$TRANSFORM_TOUCH" | tee -a "$AUTOSTART_FILE" > /dev/null
+    generate_config /home/root/kiosk/fix-touch.sh
+    chmod +x /home/root/kiosk/fix-touch.sh
+
+    if ! grep -Fxq "$AUTOSTART_TOUCH" "$AUTOSTART_FILE"; then
+        echo "[INFO] Adding touch fix entry to $AUTOSTART_FILE"
+        echo "$AUTOSTART_TOUCH" | tee -a "$AUTOSTART_FILE" > /dev/null
     else
-        echo "[INFO] Transform touch entry already present."
+        echo "[INFO] Touch fix entry already present."
     fi
 
     echo "[INFO] Kiosk setup complete. Reboot for it to launch."
