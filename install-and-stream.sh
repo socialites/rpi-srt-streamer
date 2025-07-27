@@ -380,7 +380,21 @@ if echo "$PI_MODEL" | grep -q -E "Raspberry Pi (4|5)"; then
       echo "[INFO] Installing TFT screen driver (LCD35-show)"
       # Backup config just in case
       [ ! -f "$BOOT_CONFIG.bak" ] && sudo cp "$BOOT_CONFIG" "$BOOT_CONFIG.bak"
-      curl -fsSL https://raw.githubusercontent.com/socialites/LCD-show/master/LCD35-show | sudo bash
+     # Clone and run LCD-show with reboot disabled
+     git clone https://github.com/socialites/LCD-show.git /tmp/LCD-show
+     cd /tmp/LCD-show
+
+        # Temporarily override reboot inside sudo call
+        sudo bash -c '
+            reboot() { echo "[INFO] Blocked reboot in LCD-show"; };
+            export -f reboot;
+            ./LCD35-show
+        '
+
+        # === Modify config.txt to set correct rotation ===
+        echo "[INFO] Patching LCD-show config.txt rotation..."
+        sudo sed -i 's/^dtoverlay=tft35a:rotate=90/dtoverlay=tft35a:rotate=0/' "$BOOT_CONFIG"
+
       REBOOT_NEEDED=true
     else
       echo "[INFO] TFT screen already configured. Skipping LCD35-show."
