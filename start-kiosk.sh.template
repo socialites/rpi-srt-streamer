@@ -23,5 +23,5 @@ chromium-browser \
   --incognito \
   --no-sandbox \
   --touch-events=enabled \
-  --force-device-scale-factor=$SCALE_FACTOR \
-  --kiosk $URL
+  --force-device-scale-factor=\$SCALE_FACTOR \
+  --kiosk \$URL
