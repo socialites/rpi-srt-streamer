@@ -323,7 +323,7 @@ if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
 
     mkdir -p /home/root/kiosk
     cd /home/root/kiosk
-    generate_config /home/root/kiosk/start-kiosk.sh
+    generate_config /home/root/kiosk/start-kiosk.sh.template
     chmod +x /home/root/kiosk/start-kiosk.sh
 
     # Autostart setup
