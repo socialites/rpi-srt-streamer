@@ -323,11 +323,9 @@ if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
 
     mkdir -p /home/root/kiosk
     cd /home/root/kiosk
-    generate_config /home/root/kiosk/start-kiosk.sh
-    sed "s|SCREEN=.*|SCREEN=$SCREEN|; s|SCREEN_SIZE=.*|SCREEN_SIZE=$SCREEN_SIZE|" start-kiosk.sh > start-kiosk.sh.tmp
-    mv start-kiosk.sh.tmp start-kiosk.sh
+    generate_config /home/root/kiosk/start-kiosk.sh.template
+    sed "s|__SCREEN__|$SCREEN|g; s|__SCREEN_SIZE__|$SCREEN_SIZE|g" start-kiosk.sh.template > start-kiosk.sh
     chmod +x start-kiosk.sh
-
 
     # Autostart setup
     AUTOSTART_FILE="/etc/xdg/lxsession/LXDE-pi/autostart"
