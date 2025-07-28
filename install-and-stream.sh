@@ -323,7 +323,7 @@ if [[ $SCREEN == "true" && $SCREEN_SIZE == "0350" ]]; then
 
     mkdir -p /home/root/kiosk
     cd /home/root/kiosk
-    generate_config /home/root/kiosk/start-kiosk.sh.template
+    curl -fsSL -o start-kiosk.sh.template "${REPO_URL}/start-kiosk.sh.template"
     sed "s|__SCREEN__|$SCREEN|g; s|__SCREEN_SIZE__|$SCREEN_SIZE|g" start-kiosk.sh.template > start-kiosk.sh
     chmod +x start-kiosk.sh
 
