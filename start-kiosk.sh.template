@@ -9,7 +9,7 @@ SCALE_FACTOR="1"
 
 if [[ "__SCREEN__" == "true" && -n "__SCREEN_SIZE__" ]]; then
   URL+="?screen=__SCREEN_SIZE__"
-  SCALE_FACTOR="0.6"
+  SCALE_FACTOR="1"
 fi
 
 chromium-browser \
